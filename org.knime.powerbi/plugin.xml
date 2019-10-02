@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?eclipse version="3.0"?>
+<plugin>
+   <extension
+         point="org.knime.workbench.repository.categories">
+      <category
+            icon="icons/powerbi.png"
+            level-id="powerbi"
+            locked="true"
+            name="Microsoft PowerBI"
+            path="/labs/">
+      </category>
+   </extension>
+</plugin>
