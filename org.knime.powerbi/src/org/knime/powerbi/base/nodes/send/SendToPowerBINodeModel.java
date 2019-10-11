@@ -131,7 +131,6 @@ class SendToPowerBINodeModel extends NodeModel {
         final BufferedDataTable inTable = inData[0];
         final double rowCount = inTable.size();
         final DataTableSpec inSpec = inTable.getDataTableSpec();
-        final String[] columnNames = inSpec.getColumnNames();
 
         // TODO make sure to keep this in mind: https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
 
@@ -150,14 +149,14 @@ class SendToPowerBINodeModel extends NodeModel {
         final String workspaceId = getWorkspaceId(auth, workspace);
 
         // Check if the dataset already exists and get its id
-        String datasetId = getDatasetId(auth, workspaceId, datasetName);
+        final Dataset dataset = getDataset(auth, workspaceId, datasetName);
+        String datasetId = dataset == null ? null : dataset.getId();
 
-        if (datasetId != null) {
+        if (dataset != null) {
 
             switch (overwritePolicy) {
                 case ABORT:
-                    // TODO throw other exception?
-                    throw new IllegalStateException(
+                    throw new InvalidSettingsException(
                         "The dataset with the name \"" + datasetName + "\" already exists.");
 
                 case OVERWRITE:
@@ -166,21 +165,16 @@ class SendToPowerBINodeModel extends NodeModel {
                     break;
 
                 case APPEND:
+                    if (!dataset.isAddRowsAPIEnabled()) {
+                        throw new InvalidSettingsException("The dataset with the name \"" + datasetName
+                            + "\" already exists and does not support adding rows.");
+                    }
                     final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
                     final Table table = getTableWithName(tables, tableName);
                     if (table == null) {
-                        // Add the table to the existing dataset
-                        final Column[] columns = createColumnsDef(inSpec);
-                        PowerBIRestAPIUtils.putTable(auth, workspaceId, datasetId, tableName, columns);
-                    } // else {
-                      // Check that the table is compatible with the input table
-                      // if (!isCompatible(table, inSpec)) {
-                      //    throw new IllegalStateException("The dataset with the name \"" + datasetName
-                      //        + "\" has a table with the name \"" + tableName
-                      //        + "\". However, the existing table is not compatible with the input table.");
-                      // }
-                      // If it is compatible we will just add rows
-                      // }
+                        throw new InvalidSettingsException("The dataset with the name \"" + datasetName
+                            + "\" already exists but has not table with the name \"" + tableName + "\".");
+                    }
                     break;
 
                 default:
@@ -218,36 +212,6 @@ class SendToPowerBINodeModel extends NodeModel {
         return new BufferedDataTable[0];
     }
 
-    /** Checks if the PowerBI table is compatible with the given table spec */
-    private static boolean isCompatible(final Table pbiTable, final DataTableSpec inSpec) {
-        final Table inputTable = createTableDef(pbiTable.getName(), inSpec);
-        final Column[] inColumns = inputTable.getColumns();
-        final Column[] pbiColumns = pbiTable.getColumns();
-
-        // TODO ignore column order?
-        // TODO move to Table#equals?
-
-        // Same number of columns
-        if (inColumns.length != pbiColumns.length) {
-            return false;
-        }
-
-        // Loop over columns
-        for (int i = 0; i < inColumns.length; i++) {
-            final Column inCol = inColumns[i];
-            final Column pbiCol = pbiColumns[i];
-
-            // Column name and type
-            if (!inCol.getName().equals(pbiCol.getName()) || //
-                !inCol.getDataType().equals(pbiCol.getDataType())) {
-                return false;
-            }
-        }
-
-        // All checks passed
-        return true;
-    }
-
     /** Get the table with the given name */
     private static Table getTableWithName(final Tables tables, final String tableName) {
         for (final Table table : tables.getValue()) {
@@ -258,13 +222,13 @@ class SendToPowerBINodeModel extends NodeModel {
         return null;
     }
 
-    /** Check if a dataset exists. Returns the dataset id or null */
-    private static String getDatasetId(final AzureADAuthentication auth, final String workspaceId,
+    /** Get the dataset with the given name */
+    private static Dataset getDataset(final AzureADAuthentication auth, final String workspaceId,
         final String datasetName) throws PowerBIResponseException {
         final Datasets datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         for (final Dataset dataset : datasets.getValue()) {
             if (datasetName.equals(dataset.getName())) {
-                return dataset.getId();
+                return dataset;
             }
         }
         return null;

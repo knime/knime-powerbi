@@ -61,10 +61,13 @@ public final class Dataset {
 
     private final String webUrl;
 
-    private Dataset(final String i, final String n, final String w) {
+    private final boolean addRowsAPIEnabled;
+
+    private Dataset(final String i, final String n, final String w, final boolean a) {
         id = i;
         name = n;
         webUrl = w;
+        addRowsAPIEnabled = a;
     }
 
     /**
@@ -86,6 +89,13 @@ public final class Dataset {
      */
     public String getWebUrl() {
         return webUrl;
+    }
+
+    /**
+     * @return the addRowsAPIEnabled
+     */
+    public boolean isAddRowsAPIEnabled() {
+        return addRowsAPIEnabled;
     }
 
     @Override
