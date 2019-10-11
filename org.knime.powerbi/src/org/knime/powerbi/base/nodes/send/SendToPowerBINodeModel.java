@@ -75,6 +75,8 @@ import org.knime.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
 import org.knime.powerbi.core.rest.bindings.Column;
 import org.knime.powerbi.core.rest.bindings.Dataset;
 import org.knime.powerbi.core.rest.bindings.Datasets;
+import org.knime.powerbi.core.rest.bindings.Group;
+import org.knime.powerbi.core.rest.bindings.Groups;
 import org.knime.powerbi.core.rest.bindings.Table;
 import org.knime.powerbi.core.rest.bindings.Tables;
 
@@ -87,11 +89,12 @@ class SendToPowerBINodeModel extends NodeModel {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
-    static final OAuth20Scope OAUTH_POWERBI_SCOPE = new DefaultOAuth20Scope(new String[]{ //
+    static final OAuth20Scope OAUTH_POWERBI_SCOPE = new DefaultOAuth20Scope( //
         "offline_access", // Required for the refresh token
         "https://analysis.windows.net/powerbi/api/Dataset.Read.All", // Required to list datasets
-        "https://analysis.windows.net/powerbi/api/Dataset.ReadWrite.All" // Required to upload datasets
-    });
+        "https://analysis.windows.net/powerbi/api/Dataset.ReadWrite.All", // Required to upload datasets
+        "https://analysis.windows.net/powerbi/api/Workspace.Read.All" // Required to get the workspaces
+    );
 
     private final SendToPowerBINodeSettings m_settings;
 
@@ -118,7 +121,6 @@ class SendToPowerBINodeModel extends NodeModel {
         final String[] columnNames = inSpec.getColumnNames();
 
         // TODO make sure to keep this in mind: https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
-        // TODO datasets in groups?
 
         // Refresh the access token
         // Note: This is not best practice but works for us now.
@@ -128,10 +130,14 @@ class SendToPowerBINodeModel extends NodeModel {
         // Get the settings
         final String tableName = m_settings.getTableName();
         final String datasetName = m_settings.getDatasetName();
+        final String workspace = m_settings.getWorkspace();
         final OverwritePolicy overwritePolicy = m_settings.getOverwritePolicy();
 
+        // Get the workspace id (can be null)
+        final String workspaceId = getWorkspaceId(auth, workspace);
+
         // Check if the dataset already exists and get its id
-        String datasetId = getDatasetId(auth, datasetName);
+        String datasetId = getDatasetId(auth, workspaceId, datasetName);
 
         if (datasetId != null) {
 
@@ -142,17 +148,17 @@ class SendToPowerBINodeModel extends NodeModel {
                         "The dataset with the name \"" + datasetName + "\" already exists.");
 
                 case OVERWRITE:
-                    PowerBIRestAPIUtils.deleteDataset(auth, datasetId);
+                    PowerBIRestAPIUtils.deleteDataset(auth, workspaceId, datasetId);
                     datasetId = null;
                     break;
 
                 case APPEND:
-                    final Tables tables = PowerBIRestAPIUtils.getTables(auth, datasetId);
+                    final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
                     final Table table = getTableWithName(tables, tableName);
                     if (table == null) {
                         // Add the table to the existing dataset
                         final Column[] columns = createColumnsDef(inSpec);
-                        PowerBIRestAPIUtils.putTable(auth, datasetId, tableName, columns);
+                        PowerBIRestAPIUtils.putTable(auth, workspaceId, datasetId, tableName, columns);
                     } // else {
                       // Check that the table is compatible with the input table
                       // if (!isCompatible(table, inSpec)) {
@@ -173,8 +179,8 @@ class SendToPowerBINodeModel extends NodeModel {
         if (datasetId == null) {
             // Create the dataset
             final Table pbiTable = createTableDef(tableName, inSpec);
-            final Dataset pbiDataset =
-                PowerBIRestAPIUtils.createDataset(auth, datasetName, POWERBI_DATASET_MODE, new Table[]{pbiTable});
+            final Dataset pbiDataset = PowerBIRestAPIUtils.postDataset(auth, workspaceId, datasetName,
+                POWERBI_DATASET_MODE, new Table[]{pbiTable});
             datasetId = pbiDataset.getId();
         }
 
@@ -186,7 +192,7 @@ class SendToPowerBINodeModel extends NodeModel {
             rowBuilder.addRow(columnNames, row);
             if (!rowBuilder.acceptsRows()) {
                 // Send to PowerBI
-                PowerBIRestAPIUtils.addRows(auth, datasetId, tableName, rowBuilder.toString());
+                PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
                 rowBuilder = new RowsBuilder();
             }
             exec.setProgress(++rowIdx / rowCount);
@@ -194,7 +200,7 @@ class SendToPowerBINodeModel extends NodeModel {
             exec.checkCanceled();
         }
         // Send the last rows
-        PowerBIRestAPIUtils.addRows(auth, datasetId, tableName, rowBuilder.toString());
+        PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
 
         return new BufferedDataTable[0];
     }
@@ -240,15 +246,31 @@ class SendToPowerBINodeModel extends NodeModel {
     }
 
     /** Check if a dataset exists. Returns the dataset id or null */
-    private static String getDatasetId(final AzureADAuthentication auth, final String datasetName)
-        throws PowerBIResponseException {
-        final Datasets datasets = PowerBIRestAPIUtils.getDatasets(auth);
+    private static String getDatasetId(final AzureADAuthentication auth, final String workspaceId,
+        final String datasetName) throws PowerBIResponseException {
+        final Datasets datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         for (final Dataset dataset : datasets.getValue()) {
             if (datasetName.equals(dataset.getName())) {
                 return dataset.getId();
             }
         }
         return null;
+    }
+
+    /** Get the id of the workspace if it is not empty. If it does not exist an InvalidSettingsException is thrown. */
+    private static String getWorkspaceId(final AzureADAuthentication auth, final String workspace)
+        throws PowerBIResponseException, InvalidSettingsException {
+        if (workspace == null || workspace.trim().isEmpty()) {
+            return null;
+        }
+        // Find the workspace/group
+        final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
+        for (final Group g : groups.getValue()) {
+            if (workspace.equals(g.getName())) {
+                return g.getId();
+            }
+        }
+        throw new InvalidSettingsException("The workspace with the name \"" + workspace + "\" does not exist.");
     }
 
     /** Creates a PowerBI table definition given a KNIME DataTableSpec and a name */

@@ -44,33 +44,45 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 8, 2019 (benjamin): created
+ *   Oct 11, 2019 (benjamin): created
  */
-package org.knime.azuread.auth;
+package org.knime.powerbi.core.rest.bindings;
 
 /**
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class DefaultOAuth20Scope implements OAuth20Scope {
+public class Group {
 
-    private final String[] m_resources;
+    private final String name;
+
+    private final String id;
+
+    private final boolean isReadOnly;
+
+    private Group(final String n, final String i, final boolean r) {
+        name = n;
+        id = i;
+        isReadOnly = r;
+    }
 
     /**
-     * Create a new scope for the given resources.
-     *
-     * @param resources a list of requested resources
+     * @return the name
      */
-    public DefaultOAuth20Scope(final String... resources) {
-        m_resources = resources;
+    public String getName() {
+        return name;
     }
 
-    @Override
-    public String getScope() {
-        return String.join(" ", m_resources);
+    /**
+     * @return the id
+     */
+    public String getId() {
+        return id;
     }
 
-    @Override
-    public String toString() {
-        return getScope();
+    /**
+     * @return the isReadOnly
+     */
+    public boolean isReadOnly() {
+        return isReadOnly;
     }
 }

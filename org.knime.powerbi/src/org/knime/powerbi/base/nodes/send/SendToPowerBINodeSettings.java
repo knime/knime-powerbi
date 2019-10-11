@@ -72,6 +72,8 @@ class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_VALID_UNTIL = "valid_until";
 
+    private static final String CFG_KEY_WORKSPACE = "workspace";
+
     private static final String CFG_KEY_DATASET_NAME = "dataset_name";
 
     private static final String CFG_KEY_TABLE_NAME = "table_name";
@@ -79,6 +81,8 @@ class SendToPowerBINodeSettings {
     private static final String CFG_KEY_OVERWRITE_POLICY = "overwrite_policy";
 
     private AzureADAuthentication m_authentication;
+
+    private String m_workspace = "";
 
     private String m_datasetName = "";
 
@@ -110,6 +114,20 @@ class SendToPowerBINodeSettings {
      */
     void setAuthentication(final AzureADAuthentication authentication) {
         m_authentication = authentication;
+    }
+
+    /**
+     * @return the workspace
+     */
+    String getWorkspace() {
+        return m_workspace;
+    }
+
+    /**
+     * @param workspace the workspace to set
+     */
+    void setWorkspace(final String workspace) {
+        m_workspace = workspace;
     }
 
     /**
@@ -162,12 +180,15 @@ class SendToPowerBINodeSettings {
                 getAuthentication().getRefreshToken().orElseGet(() -> null));
             authConfig.addLong(CFG_KEY_VALID_UNTIL, getAuthentication().getValidUntil());
         }
+        settings.addString(CFG_KEY_WORKSPACE, getWorkspace());
         settings.addString(CFG_KEY_DATASET_NAME, getDatasetName());
         settings.addString(CFG_KEY_TABLE_NAME, getTableName());
         settings.addString(CFG_KEY_OVERWRITE_POLICY, getOverwritePolicy().name());
     }
 
     void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
+        // Note that the workspace config can be empty
+        settings.getString(CFG_KEY_WORKSPACE);
         final String datasetName = settings.getString(CFG_KEY_DATASET_NAME);
         final String tableName = settings.getString(CFG_KEY_TABLE_NAME);
         OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY));
@@ -179,7 +200,8 @@ class SendToPowerBINodeSettings {
         }
     }
 
-    void loadSettingsFrom(final NodeSettingsRO settings, final DataTableSpec[] specs) throws NotConfigurableException {
+    void loadSettingsFrom(final NodeSettingsRO settings, @SuppressWarnings("unused") final DataTableSpec[] specs)
+        throws NotConfigurableException {
         try {
             if (settings.containsKey(CFG_KEY_AUTHENTICATION)) {
                 final Config authConfig = settings.getConfig(CFG_KEY_AUTHENTICATION);
@@ -190,6 +212,7 @@ class SendToPowerBINodeSettings {
             } else {
                 setAuthentication(null);
             }
+            setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
             setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
             setTableName(settings.getString(CFG_KEY_TABLE_NAME));
             setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));
@@ -208,6 +231,7 @@ class SendToPowerBINodeSettings {
         } else {
             setAuthentication(null);
         }
+        setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
         setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
         setTableName(settings.getString(CFG_KEY_TABLE_NAME));
         setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));

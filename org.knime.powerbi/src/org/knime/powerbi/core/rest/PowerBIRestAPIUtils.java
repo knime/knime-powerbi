@@ -65,6 +65,7 @@ import org.knime.powerbi.core.rest.bindings.Column;
 import org.knime.powerbi.core.rest.bindings.Dataset;
 import org.knime.powerbi.core.rest.bindings.Datasets;
 import org.knime.powerbi.core.rest.bindings.ErrorResponse;
+import org.knime.powerbi.core.rest.bindings.Groups;
 import org.knime.powerbi.core.rest.bindings.Table;
 import org.knime.powerbi.core.rest.bindings.Tables;
 
@@ -82,17 +83,37 @@ public class PowerBIRestAPIUtils {
 
     private static final String GET_DATASETS_URI = "https://api.powerbi.com/v1.0/myorg/datasets";
 
-    private static final String CREATE_DATASET_URI = "https://api.powerbi.com/v1.0/myorg/datasets";
+    private static final String GET_DATASETS_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets";
 
-    private static final String ADD_ROWS_URI =
+    private static final String POST_DATASET_URI = "https://api.powerbi.com/v1.0/myorg/datasets";
+
+    private static final String POST_DATASET_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets";
+
+    private static final String POST_ROWS_URI =
         "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/tables/{tableName}/rows";
+
+    private static final String POST_ROWS_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}/rows";
 
     private static final String DELETE_DATASET_URI = "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}";
 
+    private static final String DELETE_DATASET_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}";
+
     private static final String GET_TABLES_URI = "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/tables";
+
+    private static final String GET_TABLES_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables";
 
     private static final String PUT_TABLE_URI =
         "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/tables/{tableName}";
+
+    private static final String PUT_TABLE_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}";
+
+    private static final String GET_GROUPS_URI = "https://api.powerbi.com/v1.0/myorg/groups";
 
     private static final Gson GSON = new Gson();
 
@@ -112,6 +133,23 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
+     * Calls "Datasets - Get Datasets In Group" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @return a {@link Datasets} object which contains a list of datasets
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static Datasets getDatasets(final AzureADAuthentication auth, final String groupId)
+        throws PowerBIResponseException {
+        if (groupId == null) {
+            return getDatasets(auth);
+        }
+        final String uri = UriBuilder.fromPath(GET_DATASETS_IN_GROUP_URI).build(groupId).toString();
+        return get(uri, Datasets.class, auth);
+    }
+
+    /**
      * Calls "Push Datasets - Datasets PostDataset" from the PowerBI REST API.
      *
      * @param auth the authentication to use
@@ -121,13 +159,37 @@ public class PowerBIRestAPIUtils {
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Dataset createDataset(final AzureADAuthentication auth, final String datasetName,
+    public static Dataset postDataset(final AzureADAuthentication auth, final String datasetName,
         final String defaultMode, final Table[] tables) throws PowerBIResponseException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
-        return post(CREATE_DATASET_URI, Dataset.class, GSON.toJson(body), auth);
+        return post(POST_DATASET_URI, Dataset.class, GSON.toJson(body), auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Datasets PostDatasetInGroup" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetName the name of the dataset
+     * @param defaultMode the mode of the dataset
+     * @param tables the table definitions of the dataset
+     * @return the created dataset
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static Dataset postDataset(final AzureADAuthentication auth, final String groupId, final String datasetName,
+        final String defaultMode, final Table[] tables) throws PowerBIResponseException {
+        if (groupId == null) {
+            return postDataset(auth, datasetName, defaultMode, tables);
+        }
+        final Map<String, Object> body = new HashMap<>(2);
+        body.put("name", datasetName);
+        body.put("defaultMode", defaultMode);
+        body.put("tables", tables);
+        final String uri = UriBuilder.fromPath(POST_DATASET_IN_GROUP_URI).build(groupId).toString();
+        return post(uri, Dataset.class, GSON.toJson(body), auth);
     }
 
     /**
@@ -140,9 +202,30 @@ public class PowerBIRestAPIUtils {
      * @param rows the rows to add
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void addRows(final AzureADAuthentication auth, final String datasetId, final String tableName,
+    public static void postRows(final AzureADAuthentication auth, final String datasetId, final String tableName,
         final String rows) throws PowerBIResponseException {
-        final String uri = UriBuilder.fromPath(ADD_ROWS_URI).build(datasetId, tableName).toString();
+        final String uri = UriBuilder.fromPath(POST_ROWS_URI).build(datasetId, tableName).toString();
+        post(uri, Void.class, rows, auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Datasets PostRowsInGroup" from the PowerBI REST API. Add rows to an existing PowerBI
+     * dataset and table.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @param tableName the name of the table
+     * @param rows the rows to add
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static void postRows(final AzureADAuthentication auth, final String groupId, final String datasetId,
+        final String tableName, final String rows) throws PowerBIResponseException {
+        if (groupId == null) {
+            postRows(auth, datasetId, tableName, rows);
+            return;
+        }
+        final String uri = UriBuilder.fromPath(POST_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
         post(uri, Void.class, rows, auth);
     }
 
@@ -160,6 +243,24 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
+     * Calls "Datasets - Delete DatasetInGroup" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static void deleteDataset(final AzureADAuthentication auth, final String groupId, final String datasetId)
+        throws PowerBIResponseException {
+        if (groupId == null) {
+            deleteDataset(auth, datasetId);
+            return;
+        }
+        final String uri = UriBuilder.fromPath(DELETE_DATASET_IN_GROUP_URI).build(groupId, datasetId).toString();
+        delete(uri, Void.class, auth);
+    }
+
+    /**
      * Calls "Push Datasets - Datasets GetTables" from the PowerBI REST API.
      *
      * @param auth the authentication to use
@@ -170,6 +271,24 @@ public class PowerBIRestAPIUtils {
     public static Tables getTables(final AzureADAuthentication auth, final String datasetId)
         throws PowerBIResponseException {
         final String uri = UriBuilder.fromPath(GET_TABLES_URI).build(datasetId).toString();
+        return get(uri, Tables.class, auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Datasets GetTablesInGroup" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @return the tables
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static Tables getTables(final AzureADAuthentication auth, final String groupId, final String datasetId)
+        throws PowerBIResponseException {
+        if (groupId == null) {
+            return getTables(auth, datasetId);
+        }
+        final String uri = UriBuilder.fromPath(GET_TABLES_IN_GROUP_URI).build(groupId, datasetId).toString();
         return get(uri, Tables.class, auth);
     }
 
@@ -189,6 +308,40 @@ public class PowerBIRestAPIUtils {
         body.put("columns", columns);
         final String uri = UriBuilder.fromPath(PUT_TABLE_URI).build(datasetId, tableName).toString();
         put(uri, Void.class, GSON.toJson(body), auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Datasets PutTableInGroup" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @param tableName the name of the table
+     * @param columns the columns of the table
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static void putTable(final AzureADAuthentication auth, final String groupId, final String datasetId,
+        final String tableName, final Column[] columns) throws PowerBIResponseException {
+        if (groupId == null) {
+            putTable(auth, datasetId, tableName, columns);
+            return;
+        }
+        final Map<String, Object> body = new HashMap<>(2);
+        body.put("name", tableName);
+        body.put("columns", columns);
+        final String uri = UriBuilder.fromPath(PUT_TABLE_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
+        put(uri, Void.class, GSON.toJson(body), auth);
+    }
+
+    /**
+     * Calls "Groups - Get Groups" from the PowerBI REST API.
+     *
+     * @param auth the authentication to use
+     * @return the groups the user has access to
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static Groups getGroups(final AzureADAuthentication auth) throws PowerBIResponseException {
+        return get(GET_GROUPS_URI, Groups.class, auth);
     }
 
     /** Make a GET request */

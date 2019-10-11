@@ -87,6 +87,8 @@ class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JTextField m_tableName;
 
+    private JTextField m_workspace;
+
     private JRadioButton m_overwriteButton;
 
     private JRadioButton m_appendButton;
@@ -121,6 +123,16 @@ class SendToPowerBINodeDialog extends NodeDialogPane {
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints gbc = createGBC();
 
+        // Workspace
+        panel.add(new JLabel("Workspace"), gbc);
+        gbc.gridx++;
+        gbc.weightx = 3;
+        m_workspace = new JTextField("");
+        panel.add(m_workspace, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 1;
         // Dataset name
         panel.add(new JLabel("Dataset name"), gbc);
         gbc.gridx++;
@@ -182,6 +194,7 @@ class SendToPowerBINodeDialog extends NodeDialogPane {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) throws InvalidSettingsException {
         m_settings.setAuthentication(m_authenticator.getAuthentication());
+        m_settings.setWorkspace(m_workspace.getText());
         m_settings.setDatasetName(m_datasetName.getText());
         m_settings.setTableName(m_tableName.getText());
         final OverwritePolicy overwritePolicy;
@@ -201,6 +214,7 @@ class SendToPowerBINodeDialog extends NodeDialogPane {
         throws NotConfigurableException {
         m_settings.loadSettingsFrom(settings, specs);
         m_authenticator.setAuthentication(m_settings.getAuthentication());
+        m_workspace.setText(m_settings.getWorkspace());
         m_datasetName.setText(m_settings.getDatasetName());
         m_tableName.setText(m_settings.getTableName());
         switch (m_settings.getOverwritePolicy()) {
