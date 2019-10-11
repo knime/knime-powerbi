@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: KNIME PowerBI Integration
+Bundle-Name: KNIME Power BI Integration
 Bundle-SymbolicName: org.knime.powerbi;singleton:=true
 Bundle-Version: 4.1.0.qualifier
 Bundle-ClassPath: knime-powerbi.jar

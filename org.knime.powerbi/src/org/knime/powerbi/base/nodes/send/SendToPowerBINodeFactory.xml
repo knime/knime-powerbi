@@ -3,19 +3,120 @@
 	xmlns="http://knime.org/node/v2.8"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://knime.org/node/v2.8 http://knime.org/node/v2.8.xsd">
-	<name>Send to PowerBI</name>
-	<shortDescription>Send a table to Microsoft PowerBI.</shortDescription>
+	<name>Send to Power BI</name>
+	<shortDescription>Send a table to Microsoft Power BI.</shortDescription>
 	<fullDescription>
 		<intro>
-			TODO
+			This node sends the input table to Microsoft Power BI.
+			<p />
+			The node only
+			uploads columns that are supported by Power BI. Other
+			columns are
+			ignored. The supported types are
+			<i>String</i>
+			,
+			<i>Number (integer)</i>
+			,
+			<i>Number (long)</i>
+			,
+			<i>Number (double)</i>
+			,
+			<i>Boolean value</i>
+			,
+			<i>Local Date</i>
+			and
+			<i>Local Date Time</i>
+			.
+			<p />
+			The node uploads rows in chunks to Microsoft Power BI. If the node is
+			canceled, the already uploaded rows will remain in the Power BI
+			dataset.
+			<p />
+			<b>Important:</b>
+			The node saves a refresh token with access to your Microsoft account
+			(with the specified permissions) in the node settings. Before sharing
+			the workflow, you should clear your credentials in the node dialog.
+			<p />
+			The KNIME
+			Analytics Platform Azure Application needs the following
+			permissions:
+			<ul>
+				<li>
+					<b>View all datasets</b>
+					: Needed to check if a dataset already exists in your Power BI
+					workspace.
+				</li>
+				<li>
+					<b>Read and write all datasets</b>
+					: Needed to upload a table to a Power BI dataset in your workspace.
+				</li>
+				<li>
+					<b>View all workspaces</b>
+					: Needed to get the identifier of the selected Power BI workspace.
+				</li>
+				<li>
+					<b>Maintain access to data you have given it access to</b>
+					: Needed to access the Power BI API during the node execution
+					without asking you to log in again.
+				</li>
+			</ul>
 		</intro>
-		<option name="Authenticate">
-			TODO
-		</option>
+		<tab name="Authenticaion">
+			<option name="Authenticate">
+				Press this button to authentication with Power BI.
+				A page will be opened in your browser, which will ask you to sign in
+				to your Microsoft account. Once you are logged in, you will be asked
+				to accept the permission requests of the KNIME Analytics Platform
+				application if you did not accept the permissions previously. If the
+				authentication succeeded, you will be redirected to a page that
+				states that the verification code has been received and that you may
+				close the window. The status in the node dialog will update to
+				"Authenticated".
+			</option>
+			<option name="Cancel">
+				Cancel a running authentication process.
+			</option>
+			<option name="Clear Credentials">
+				Delete the saved credentials from the node
+				settings. This should be done before sharing a workflow with this
+				node.
+			</option>
+		</tab>
+		<tab name="Dataset Selection">
+			<option name="Workspace">
+				The name of the workspace to use. Leave this
+				option empty to use the default workspace "My workspace".
+			</option>
+			<option name="Dataset name">
+				The name of the dataset to upload.
+			</option>
+			<option name="Table name">
+				The name of the table in the dataset to upload.
+			</option>
+			<option name="In dataset exists...">
+				<ul>
+					<li>
+						<b>Overwrite</b>
+						: If the dataset already exists it will be deleted before
+						uploading the new dataset
+					</li>
+					<li>
+						<b>Append</b>
+						: If the dataset already exists the data will be appended to the
+						existing dataset. Note that the dataset has to be a "Push" dataset
+						for this option to work.
+					</li>
+					<li>
+						<b>Abort</b>
+						: If the dataset already exists the node fails.
+					</li>
+				</ul>
+			</option>
+		</tab>
 	</fullDescription>
 	<ports>
 		<inPort index="0" name="Table">
-			A table that should be send to PowerBI.
+			A table that should be send to Power BI.
 		</inPort>
 	</ports>
 </knimeNode>
