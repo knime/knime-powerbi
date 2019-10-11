@@ -49,7 +49,8 @@
 package org.knime.powerbi.core.rest.bindings;
 
 /**
- * A PowerBI table collection.
+ * A Power BI table collection.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public class Tables {

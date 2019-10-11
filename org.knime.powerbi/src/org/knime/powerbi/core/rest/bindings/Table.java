@@ -58,7 +58,7 @@ public class Table {
     private final Column[] columns;
 
     /**
-     * Create a new PowerBI dataset table.
+     * Create a new Power BI dataset table.
      *
      * @param n The table name
      * @param c The column schema for this table

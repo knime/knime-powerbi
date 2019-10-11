@@ -70,7 +70,7 @@ import spark.Request;
 import spark.Service;
 
 /**
- * Static utility class to authenticate with Azure Active Directory to access the PowerBI REST API.
+ * Static utility class to authenticate with Azure Active Directory.
  *
  * TODO create a utility for general OAuth authentication
  *

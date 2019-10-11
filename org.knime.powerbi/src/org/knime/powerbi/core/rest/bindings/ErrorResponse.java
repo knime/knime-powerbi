@@ -51,7 +51,7 @@ package org.knime.powerbi.core.rest.bindings;
 import java.util.Arrays;
 
 /**
- * An error reported by the PowerBI REST API.
+ * An error reported by the Power BI REST API.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
@@ -76,7 +76,7 @@ public class ErrorResponse {
     }
 
     /**
-     * An error message of PowerBI.
+     * An error message of Power BI.
      */
     public static class Error {
         private final String code;
@@ -119,7 +119,7 @@ public class ErrorResponse {
     }
 
     /**
-     * Details of an error message of PowerBI.
+     * Details of an error message of Power BI.
      */
     public static class Detail {
         private final String message;

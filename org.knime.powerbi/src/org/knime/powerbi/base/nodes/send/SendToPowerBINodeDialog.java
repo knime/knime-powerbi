@@ -73,7 +73,7 @@ import org.knime.core.node.NotConfigurableException;
 import org.knime.powerbi.base.nodes.send.SendToPowerBINodeSettings.OverwritePolicy;
 
 /**
- * Dialog for the Send to PowerBI node.
+ * Dialog for the Send to Power BI node.
  *
  * @author Benjamin Wilhem, KNIME GmbH, Konstanz, Germany
  */

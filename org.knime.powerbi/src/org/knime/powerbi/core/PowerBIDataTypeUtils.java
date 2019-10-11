@@ -80,10 +80,10 @@ public class PowerBIDataTypeUtils {
     }
 
     /**
-     * Convert the KNIME type to a PowerBI type.
+     * Convert the KNIME type to a Power BI type.
      *
      * @param knimeType the KNIME type
-     * @return the PowerBI type
+     * @return the Power BI type
      */
     public static Optional<String> powerBITypeForKNIMEType(final DataType knimeType) {
         if (knimeType.isCompatible(BooleanValue.class)) {
@@ -105,10 +105,10 @@ public class PowerBIDataTypeUtils {
     }
 
     /**
-     * Converts a KNIME data value to its string representation in a JSON object for PowerBI.
+     * Converts a KNIME data value to its string representation in a JSON object for Power BI.
      *
      * @param value the KNIME data value
-     * @return the JSON string representation of the value for PowerBI
+     * @return the JSON string representation of the value for Power BI
      */
     public static Optional<String> powerBIValueForKNIMEValue(final DataValue value) {
         if (value instanceof MissingCell) {

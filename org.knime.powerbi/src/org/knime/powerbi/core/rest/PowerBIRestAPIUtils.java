@@ -122,7 +122,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Datasets - Get Datasets" from the PowerBI REST API.
+     * Calls "Datasets - Get Datasets" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @return a {@link Datasets} object which contains a list of datasets
@@ -133,7 +133,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Datasets - Get Datasets In Group" from the PowerBI REST API.
+     * Calls "Datasets - Get Datasets In Group" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
@@ -150,7 +150,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PostDataset" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets PostDataset" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param datasetName the name of the dataset
@@ -169,7 +169,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PostDatasetInGroup" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets PostDatasetInGroup" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
@@ -193,7 +193,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PostRows" from the PowerBI REST API. Add rows to an existing PowerBI dataset and
+     * Calls "Push Datasets - Datasets PostRows" from the Power BI REST API. Add rows to an existing Power BI dataset and
      * table.
      *
      * @param auth the authentication to use
@@ -209,7 +209,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PostRowsInGroup" from the PowerBI REST API. Add rows to an existing PowerBI
+     * Calls "Push Datasets - Datasets PostRowsInGroup" from the Power BI REST API. Add rows to an existing Power BI
      * dataset and table.
      *
      * @param auth the authentication to use
@@ -230,7 +230,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Datasets - Delete Dataset" from the PowerBI REST API.
+     * Calls "Datasets - Delete Dataset" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param datasetId the identifier of the dataset
@@ -243,7 +243,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Datasets - Delete DatasetInGroup" from the PowerBI REST API.
+     * Calls "Datasets - Delete DatasetInGroup" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
@@ -261,7 +261,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets GetTables" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets GetTables" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param datasetId the identifier of the dataset
@@ -275,7 +275,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets GetTablesInGroup" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets GetTablesInGroup" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
@@ -293,7 +293,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PutTable" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets PutTable" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param datasetId the identifier of the dataset
@@ -311,7 +311,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PutTableInGroup" from the PowerBI REST API.
+     * Calls "Push Datasets - Datasets PutTableInGroup" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
@@ -334,7 +334,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Groups - Get Groups" from the PowerBI REST API.
+     * Calls "Groups - Get Groups" from the Power BI REST API.
      *
      * @param auth the authentication to use
      * @return the groups the user has access to
@@ -383,7 +383,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Check the response of a call to the PowerBI REST API. Reads the body if successful or throws an exception if
+     * Check the response of a call to the Power BI REST API. Reads the body if successful or throws an exception if
      * unsuccessful.
      */
     private static <T> T checkResponse(final Response response, final Class<T> responseType)
@@ -395,7 +395,7 @@ public class PowerBIRestAPIUtils {
                 final ErrorResponse error = GSON.fromJson(response.readEntity(String.class), ErrorResponse.class);
                 message = error.toString();
             } catch (final JsonSyntaxException | ProcessingException e) {
-                message = "Error occured during communicating with PowerBI: " + statusInfo.getReasonPhrase()
+                message = "Error occured during communicating with Power BI: " + statusInfo.getReasonPhrase()
                     + " (Error Code: " + statusInfo.getStatusCode() + ")";
             }
             throw new PowerBIResponseException(message);
@@ -403,7 +403,7 @@ public class PowerBIRestAPIUtils {
         try {
             return GSON.fromJson(response.readEntity(String.class), responseType);
         } catch (final JsonSyntaxException e) {
-            throw new PowerBIResponseException("Invalid response from PowerBI.", e);
+            throw new PowerBIResponseException("Invalid response from Power BI.", e);
         }
     }
 
@@ -426,7 +426,7 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * An exception that is thrown if an error occurs during the communication with the PowerBI REST API.
+     * An exception that is thrown if an error occurs during the communication with the Power BI REST API.
      */
     public static class PowerBIResponseException extends Exception {
 

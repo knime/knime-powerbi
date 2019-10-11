@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: KNIME PowerBI Integration Testing
+Bundle-Name: KNIME Power BI Integration Testing
 Bundle-SymbolicName: org.knime.powerbi.testing;singleton:=true
 Bundle-Version: 4.1.0.qualifier
 Bundle-ClassPath: .

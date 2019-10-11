@@ -49,7 +49,7 @@
 package org.knime.powerbi.core.rest.bindings;
 
 /**
- * A column of a PowerBI Table.
+ * A column of a PowernBI Table.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
@@ -60,7 +60,7 @@ public class Column {
     private final String name;
 
     /**
-     * Create a new Column of a PowerBI Table.
+     * Create a new Column of a Power BI Table.
      *
      * @param n The column name
      * @param dt The column data type

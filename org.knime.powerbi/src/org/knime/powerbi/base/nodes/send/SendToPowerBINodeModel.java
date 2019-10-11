@@ -198,7 +198,7 @@ class SendToPowerBINodeModel extends NodeModel {
         for (final DataRow row : inTable) {
             rowBuilder.addRow(row);
             if (!rowBuilder.acceptsRows()) {
-                // Send to PowerBI
+                // Send to Power BI
                 PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
                 rowBuilder.reset();
             }
@@ -250,13 +250,13 @@ class SendToPowerBINodeModel extends NodeModel {
         throw new InvalidSettingsException("The workspace with the name \"" + workspace + "\" does not exist.");
     }
 
-    /** Creates a PowerBI table definition given a KNIME DataTableSpec and a name */
+    /** Creates a Power BI table definition given a KNIME DataTableSpec and a name */
     private static Table createTableDef(final String name, final DataTableSpec tableSpec) {
         final Column[] columns = createColumnsDef(tableSpec);
         return new Table(name, columns);
     }
 
-    /** Creates PowerBI column definitions given a KNIME DataTableSpec */
+    /** Creates Power BI column definitions given a KNIME DataTableSpec */
     private static Column[] createColumnsDef(final DataTableSpec tableSpec) {
         final List<Column> columns = new ArrayList<>();
         for (int i = 0; i < tableSpec.getNumColumns(); i++) {
@@ -278,7 +278,7 @@ class SendToPowerBINodeModel extends NodeModel {
                 columns.put(tableSpec.getColumnNames()[i], i);
             } else {
                 LOGGER.warn("The column \"" + columnSpec.getName()
-                    + "\" has a datatype that is not supported by PowerBI. The column will be ignored.");
+                    + "\" has a datatype that is not supported by Power BI. The column will be ignored.");
             }
         }
         return columns;

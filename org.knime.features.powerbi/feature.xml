@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="org.knime.features.powerbi"
-      label="KNIME PowerBI Integration"
+      label="KNIME Power BI Integration"
       version="4.1.0.qualifier"
       provider-name="KNIME AG, Zurich, Switzerland">
 
    <description url="http://tech.knime.org/knime-labs">
-      This feature contains nodes of the Microsoft PowerBI KNIME integration.
+      This feature contains nodes of the Microsoft Power BI KNIME integration.
    </description>
 
    <copyright>

@@ -7,7 +7,7 @@
             icon="icons/powerbi.png"
             level-id="powerbi"
             locked="true"
-            name="Microsoft PowerBI"
+            name="Microsoft Power BI"
             path="/labs/">
       </category>
    </extension>
