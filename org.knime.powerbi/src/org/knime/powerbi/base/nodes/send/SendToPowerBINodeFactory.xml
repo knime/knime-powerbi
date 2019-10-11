@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<knimeNode icon="./googleapiconnector.png" type="Sink"
+	xmlns="http://knime.org/node/v2.8"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://knime.org/node/v2.8 http://knime.org/node/v2.8.xsd">
+	<name>Send to PowerBI</name>
+	<shortDescription>Send a table to Microsoft PowerBI.</shortDescription>
+	<fullDescription>
+		<intro>
+			TODO
+		</intro>
+		<option name="Authenticate">
+			TODO
+		</option>
+	</fullDescription>
+	<ports>
+		<inPort index="0" name="Table">
+			A table that should be send to PowerBI.
+		</inPort>
+	</ports>
+</knimeNode>

@@ -11,4 +11,11 @@
             path="/labs/">
       </category>
    </extension>
+   <extension point="org.knime.workbench.repository.nodes">
+      <node
+            category-path="/labs/powerbi"
+            deprecated="false"
+            factory-class="org.knime.powerbi.base.nodes.send.SendToPowerBINodeFactory">
+      </node>
+   </extension>
 </plugin>
