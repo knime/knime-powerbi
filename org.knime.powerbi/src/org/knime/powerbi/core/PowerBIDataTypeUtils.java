@@ -48,6 +48,9 @@
  */
 package org.knime.powerbi.core;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import org.knime.core.data.BooleanValue;
@@ -58,14 +61,19 @@ import org.knime.core.data.IntValue;
 import org.knime.core.data.LongValue;
 import org.knime.core.data.MissingCell;
 import org.knime.core.data.StringValue;
+import org.knime.core.data.time.localdate.LocalDateValue;
+import org.knime.core.data.time.localdatetime.LocalDateTimeValue;
+
+import com.google.gson.Gson;
 
 /**
- * See
- * https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/entity-data-model-primitive-data-types?redirectedfrom=MSDN
+ * See https://docs.microsoft.com/en-us/power-bi/developer/api-dataset-properties
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public class PowerBIDataTypeUtils {
+
+    private static final Gson GSON = new Gson();
 
     private PowerBIDataTypeUtils() {
         // Utility class
@@ -86,10 +94,13 @@ public class PowerBIDataTypeUtils {
             return Optional.of("Int32");
         } else if (knimeType.isCompatible(LongValue.class)) {
             return Optional.of("Int64");
+        } else if (knimeType.isCompatible(LocalDateValue.class)) {
+            return Optional.of("DateTime");
+        } else if (knimeType.isCompatible(LocalDateTimeValue.class)) {
+            return Optional.of("DateTime");
         } else if (knimeType.isCompatible(StringValue.class)) {
             return Optional.of("String");
         }
-        // TODO add all types
         return Optional.empty();
     }
 
@@ -114,12 +125,19 @@ public class PowerBIDataTypeUtils {
         } else if (value instanceof LongValue) {
             final long v = ((LongValue)value).getLongValue();
             return Optional.of(String.valueOf(v));
+        } else if (value instanceof LocalDateValue) {
+            final LocalDate localDate = ((LocalDateValue)value).getLocalDate();
+            final String v = localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            return Optional.of('"' + v + '"');
+        } else if (value instanceof LocalDateTimeValue) {
+            final LocalDateTime localDateTime = ((LocalDateTimeValue)value).getLocalDateTime();
+            final String v = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            return Optional.of('"' + v + '"');
         } else if (value instanceof StringValue) {
             final String v = ((StringValue)value).getStringValue();
-            return Optional.of("\"" + v + "\"");
+            String json = GSON.toJson(v);
+            return Optional.of(json);
         }
-        // TODO add all types
-        // TODO check that missing cells work
         return Optional.empty();
     }
 }

@@ -50,6 +50,11 @@ package org.knime.powerbi.base.nodes.send;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.knime.azuread.auth.AzureADAuthentication;
@@ -105,9 +110,17 @@ class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected DataTableSpec[] configure(final DataTableSpec[] inSpecs) throws InvalidSettingsException {
+        // Check if the user is authenticated
         if (m_settings.getAuthentication() == null) {
             throw new InvalidSettingsException("Not authenticated. Please authenticate in the Node Configuration.");
         }
+
+        // Check if there is an column with a compatible type
+        if (getColumnIndexMap(inSpecs[0]).isEmpty()) {
+            throw new InvalidSettingsException("No column with a compatible datatype is available."
+                + "Note the list of supported datatypes in the node desciption.");
+        }
+
         return new DataTableSpec[0];
     }
 
@@ -185,15 +198,15 @@ class SendToPowerBINodeModel extends NodeModel {
         }
 
         // Send the table
-        RowsBuilder rowBuilder = new RowsBuilder();
+        final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(inSpec));
         long rowIdx = 0;
         exec.setProgress(0);
         for (final DataRow row : inTable) {
-            rowBuilder.addRow(columnNames, row);
+            rowBuilder.addRow(row);
             if (!rowBuilder.acceptsRows()) {
                 // Send to PowerBI
                 PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
-                rowBuilder = new RowsBuilder();
+                rowBuilder.reset();
             }
             exec.setProgress(++rowIdx / rowCount);
             // TODO can we delete the dataset that is uploaded half way?
@@ -281,14 +294,27 @@ class SendToPowerBINodeModel extends NodeModel {
 
     /** Creates PowerBI column definitions given a KNIME DataTableSpec */
     private static Column[] createColumnsDef(final DataTableSpec tableSpec) {
-        final Column[] columns = new Column[tableSpec.getNumColumns()];
-        for (int i = 0; i < columns.length; i++) {
+        final List<Column> columns = new ArrayList<>();
+        for (int i = 0; i < tableSpec.getNumColumns(); i++) {
             final DataColumnSpec columnSpec = tableSpec.getColumnSpec(i);
             final Optional<String> dataType = PowerBIDataTypeUtils.powerBITypeForKNIMEType(columnSpec.getType());
-            // TODO document in the node description that only compatible columns are transfered
-            // TODO warn for incomptablible column
             if (dataType.isPresent()) {
-                columns[i] = new Column(columnSpec.getName(), dataType.get());
+                columns.add(new Column(columnSpec.getName(), dataType.get()));
+            }
+        }
+        return columns.toArray(new Column[0]);
+    }
+
+    /** Get a map of compatible columns and their index in the input table */
+    private static Map<String, Integer> getColumnIndexMap(final DataTableSpec tableSpec) {
+        final Map<String, Integer> columns = new HashMap<>();
+        for (int i = 0; i < tableSpec.getNumColumns(); i++) {
+            final DataColumnSpec columnSpec = tableSpec.getColumnSpec(i);
+            if (PowerBIDataTypeUtils.powerBITypeForKNIMEType(columnSpec.getType()).isPresent()) {
+                columns.put(tableSpec.getColumnNames()[i], i);
+            } else {
+                LOGGER.warn("The column \"" + columnSpec.getName()
+                    + "\" has a datatype that is not supported by PowerBI. The column will be ignored.");
             }
         }
         return columns;
@@ -337,36 +363,46 @@ class SendToPowerBINodeModel extends NodeModel {
         // TODO use smarter metrics to decide if more rows get accepted
         private static final int MAX_ROW_COUNT = 400;
 
-        private final StringBuilder builder;
+        private final Map<String, Integer> m_columnNameAndIndex;
 
-        private long rowCount;
+        private StringBuilder m_builder;
 
-        private RowsBuilder() {
-            builder = new StringBuilder();
-            builder.append(ROWS_JSON_START);
-            rowCount = 0;
+        private long m_rowCount;
+
+        private RowsBuilder(final Map<String, Integer> columnNameAndIndex) {
+            m_columnNameAndIndex = columnNameAndIndex;
+            reset();
         }
 
-        private void addRow(final String[] columnNames, final DataRow row) {
-            builder.append(rowCount == 0 ? "{" : ",{");
-            for (int i = 0; i < columnNames.length; i++) {
-                final Optional<String> value = PowerBIDataTypeUtils.powerBIValueForKNIMEValue(row.getCell(i));
+        private void addRow(final DataRow row) {
+            boolean firstCol = true;
+            m_builder.append(m_rowCount == 0 ? "{" : ",{");
+            for (final Entry<String, Integer> colNameIndex : m_columnNameAndIndex.entrySet()) {
+                final Optional<String> value =
+                    PowerBIDataTypeUtils.powerBIValueForKNIMEValue(row.getCell(colNameIndex.getValue()));
                 if (value.isPresent()) {
-                    builder.append((i == 0 ? "\"" : ",\"") + columnNames[i] + "\":");
-                    builder.append(value.get());
+                    m_builder.append((firstCol ? "\"" : ",\"") + colNameIndex.getKey() + "\":");
+                    m_builder.append(value.get());
+                    firstCol = false;
                 }
             }
-            builder.append("}");
-            rowCount++;
+            m_builder.append("}");
+            m_rowCount++;
         }
 
         private boolean acceptsRows() {
-            return rowCount < MAX_ROW_COUNT;
+            return m_rowCount < MAX_ROW_COUNT;
+        }
+
+        private void reset() {
+            m_builder = new StringBuilder();
+            m_builder.append(ROWS_JSON_START);
+            m_rowCount = 0;
         }
 
         @Override
         public String toString() {
-            return builder.append(ROWS_JSON_END).toString();
+            return m_builder.append(ROWS_JSON_END).toString();
         }
     }
 }
