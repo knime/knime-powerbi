@@ -196,12 +196,12 @@ class SendToPowerBINodeModel extends NodeModel {
         long rowIdx = 0;
         exec.setProgress(0);
         for (final DataRow row : inTable) {
-            rowBuilder.addRow(row);
             if (!rowBuilder.acceptsRows()) {
                 // Send to Power BI
                 PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
                 rowBuilder.reset();
             }
+            rowBuilder.addRow(row);
             exec.setProgress(++rowIdx / rowCount);
             // TODO can we delete the dataset that is uploaded half way?
             exec.checkCanceled();
