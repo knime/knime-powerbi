@@ -50,6 +50,7 @@ package org.knime.powerbi.base.nodes.send;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,6 +60,7 @@ import java.util.Optional;
 
 import org.knime.azuread.auth.AzureADAuthentication;
 import org.knime.azuread.auth.AzureADAuthenticationUtils;
+import org.knime.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.azuread.auth.DefaultOAuth20Scope;
 import org.knime.azuread.auth.OAuth20Scope;
 import org.knime.core.data.DataColumnSpec;
@@ -137,7 +139,17 @@ class SendToPowerBINodeModel extends NodeModel {
         // Refresh the access token
         // Note: This is not best practice but works for us now.
         // In future versions we should only request a new access token if the old one is not valid anymore and check this for every API call
-        final AzureADAuthentication auth = AzureADAuthenticationUtils.refreshToken(m_settings.getAuthentication());
+        final AzureADAuthentication auth;
+        try {
+            auth = AzureADAuthenticationUtils.refreshToken(m_settings.getAuthentication());
+        } catch (final AuthenticationException e) {
+            // If the host is unknown it's most likely because the user has no internet (but maybe Microsoft is down)
+            if (e.getCause() instanceof UnknownHostException) {
+                throw new IllegalStateException(
+                    "Cannot connect to Microsoft. Please make sure to have an active internet connection.", e);
+            }
+            throw e;
+        }
 
         // Get the settings
         final String tableName = m_settings.getTableName();
