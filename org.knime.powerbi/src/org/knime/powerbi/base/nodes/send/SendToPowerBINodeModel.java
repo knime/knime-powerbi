@@ -92,6 +92,10 @@ import org.knime.powerbi.core.rest.bindings.Tables;
  */
 class SendToPowerBINodeModel extends NodeModel {
 
+    private static final double PROGRESS_PREPARE = 0.3;
+
+    private static final double PROGRESS_SEND_ROWS = 1 - PROGRESS_PREPARE;
+
     private static final int POWERBI_MAX_COLUMNS = 75;
 
     private static final String POWERBI_DATASET_MODE = "Push";
@@ -137,6 +141,9 @@ class SendToPowerBINodeModel extends NodeModel {
     @Override
     protected BufferedDataTable[] execute(final BufferedDataTable[] inData, final ExecutionContext exec)
         throws Exception {
+        final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
+        execPrepare.setMessage("Authenticating with Microsoft Power BI");
+
         // Get the input and some information
         final BufferedDataTable inTable = inData[0];
         final double rowCount = inTable.size();
@@ -158,6 +165,8 @@ class SendToPowerBINodeModel extends NodeModel {
             }
             throw e;
         }
+
+        execPrepare.setMessage("Checking for exisiting datasets");
 
         // Get the settings
         final String tableName = m_settings.getTableName();
@@ -211,10 +220,14 @@ class SendToPowerBINodeModel extends NodeModel {
             datasetId = pbiDataset.getId();
         }
 
+        // Finish the prepare step
+        execPrepare.setProgress(1);
+
         // Send the table
         final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(inSpec));
         long rowIdx = 0;
-        exec.setProgress(0);
+        final ExecutionMonitor execSendRows = exec.createSubProgress(PROGRESS_SEND_ROWS);
+        execSendRows.setProgress(0);
         for (final DataRow row : inTable) {
             if (!rowBuilder.acceptsRows()) {
                 // Send to Power BI
@@ -222,12 +235,14 @@ class SendToPowerBINodeModel extends NodeModel {
                 rowBuilder.reset();
             }
             rowBuilder.addRow(row);
-            exec.setProgress(++rowIdx / rowCount);
+            execSendRows.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long) rowCount);
+            rowIdx++;
             // TODO can we delete the dataset that is uploaded half way?
             exec.checkCanceled();
         }
         // Send the last rows
         PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
+        execSendRows.setProgress(1);
 
         return new BufferedDataTable[0];
     }
