@@ -290,16 +290,21 @@ class SendToPowerBINodeModel extends NodeModel {
     }
 
     /** Get a map of compatible columns and their index in the input table */
-    private static Map<String, Integer> getColumnIndexMap(final DataTableSpec tableSpec) {
+    private Map<String, Integer> getColumnIndexMap(final DataTableSpec tableSpec) {
         final Map<String, Integer> columns = new HashMap<>();
+        boolean hasIncompatibleColumns = false;
         for (int i = 0; i < tableSpec.getNumColumns(); i++) {
             final DataColumnSpec columnSpec = tableSpec.getColumnSpec(i);
             if (PowerBIDataTypeUtils.powerBITypeForKNIMEType(columnSpec.getType()).isPresent()) {
                 columns.put(tableSpec.getColumnNames()[i], i);
             } else {
+                hasIncompatibleColumns = true;
                 LOGGER.warn("The column \"" + columnSpec.getName()
                     + "\" has a datatype that is not supported by Power BI. The column will be ignored.");
             }
+        }
+        if (hasIncompatibleColumns) {
+            setWarningMessage("The table contains incompatible columns.");
         }
         return columns;
     }
