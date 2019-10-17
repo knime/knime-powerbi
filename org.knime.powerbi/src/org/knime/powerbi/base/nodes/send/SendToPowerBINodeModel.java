@@ -92,6 +92,8 @@ import org.knime.powerbi.core.rest.bindings.Tables;
  */
 class SendToPowerBINodeModel extends NodeModel {
 
+    private static final int POWERBI_MAX_COLUMNS = 75;
+
     private static final String POWERBI_DATASET_MODE = "Push";
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
@@ -118,9 +120,15 @@ class SendToPowerBINodeModel extends NodeModel {
         }
 
         // Check if there is an column with a compatible type
-        if (getColumnIndexMap(inSpecs[0]).isEmpty()) {
+        final Map<String, Integer> columnIndexMap = getColumnIndexMap(inSpecs[0]);
+        if (columnIndexMap.isEmpty()) {
             throw new InvalidSettingsException("No column with a compatible datatype is available."
                 + "Note the list of supported datatypes in the node desciption.");
+        }
+        if (columnIndexMap.size() > POWERBI_MAX_COLUMNS) {
+            throw new InvalidSettingsException(
+                "The table contains more columns (" + columnIndexMap.size() + ") than supported by the Power BI API ("
+                    + POWERBI_MAX_COLUMNS + "). " + " Please filter out unneeded columns.");
         }
 
         return new DataTableSpec[0];
