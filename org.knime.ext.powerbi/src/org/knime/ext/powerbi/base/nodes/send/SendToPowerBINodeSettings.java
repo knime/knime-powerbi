@@ -58,9 +58,11 @@ import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
 
 /**
+ * Settings store managing all configurations required to send to data to PowerBI.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-class SendToPowerBINodeSettings {
+final class SendToPowerBINodeSettings {
 
     private static final String ENCRYPTION_KEY = "9J4jG3m1v2FKmH9C5TffFw";
 
@@ -186,7 +188,7 @@ class SendToPowerBINodeSettings {
         settings.addString(CFG_KEY_OVERWRITE_POLICY, getOverwritePolicy().name());
     }
 
-    void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
+    static void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         // Note that the workspace config can be empty
         settings.getString(CFG_KEY_WORKSPACE);
         final String datasetName = settings.getString(CFG_KEY_DATASET_NAME);

@@ -49,9 +49,11 @@
 package org.knime.ext.powerbi.core.rest.bindings;
 
 /**
+ * A PowerBI table.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Table {
+public final class Table {
 
     private final String name;
 
@@ -69,6 +71,8 @@ public class Table {
     }
 
     /**
+     * Returns the name.
+     *
      * @return the name
      */
     public String getName() {
@@ -76,6 +80,8 @@ public class Table {
     }
 
     /**
+     * Returns the columns.
+     *
      * @return the columns
      */
     public Column[] getColumns() {

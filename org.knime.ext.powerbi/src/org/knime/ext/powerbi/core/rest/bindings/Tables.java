@@ -53,7 +53,7 @@ package org.knime.ext.powerbi.core.rest.bindings;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Tables {
+public final class Tables {
 
     private final Table[] value;
 
@@ -62,7 +62,9 @@ public class Tables {
     }
 
     /**
-     * @return the value
+     * Returns the tables.
+     *
+     * @return the tables
      */
     public Table[] getValue() {
         return value;

@@ -58,15 +58,16 @@ import org.knime.core.util.SwingWorkerWithContext;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 
 /**
- * TODO Make abstract version (or default with generic)
+ * Microsoft Active Directory authenticator implementation.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
+// TODO: Make abstract version (or default with generic)
 public class AzureADAuthenticator implements Authenticator {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(AzureADAuthentication.class);
 
-    private final Set<AuthenticatorListener> m_listeners = new HashSet<>(1);
+    private final Set<AuthenticatorListener> m_listeners;
 
     private final OAuth20Scope m_scope;
 
@@ -84,6 +85,7 @@ public class AzureADAuthenticator implements Authenticator {
      * @param scope the scope for the AzureAD authentication
      */
     public AzureADAuthenticator(final OAuth20Scope scope) {
+        m_listeners = new HashSet<>(1);
         m_scope = scope;
         m_state = AuthenticatorState.NOT_AUTHENTICATED;
         m_auth = null;
@@ -122,17 +124,21 @@ public class AzureADAuthenticator implements Authenticator {
                     LOGGER.warn(rootCause.getMessage(), e);
                     m_error = rootCause.getMessage();
                     updateState(AuthenticatorState.FAILED);
+                } finally {
+                    m_swingWorker = null;
                 }
             }
         };
-        m_swingWorker.execute();
         m_auth = null;
+        m_swingWorker.execute();
         updateState(AuthenticatorState.AUTHENTICATION_IN_PROGRESS);
     }
 
     @Override
     public void cancel() {
-        m_swingWorker.cancel(true);
+        if (m_swingWorker != null) {
+            m_swingWorker.cancel(true);
+        }
     }
 
     @Override

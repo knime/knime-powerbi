@@ -49,6 +49,8 @@
 package org.knime.ext.azuread.auth;
 
 /**
+ * A default implementation of {@link OAuth20Scope}.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public class DefaultOAuth20Scope implements OAuth20Scope {

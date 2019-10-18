@@ -55,7 +55,7 @@ import java.util.Arrays;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class ErrorResponse {
+public final class ErrorResponse {
 
     private final Error error;
 
@@ -77,6 +77,8 @@ public class ErrorResponse {
 
     /**
      * An error message of Power BI.
+     *
+     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
      */
     public static class Error {
         private final String code;
@@ -97,13 +99,17 @@ public class ErrorResponse {
         }
 
         /**
-         * @return the code
+         * Returns the error code.
+         *
+         * @return the error code
          */
         public String getCode() {
             return code;
         }
 
         /**
+         * Returns the message
+         *
          * @return the message
          */
         public String getMessage() {
@@ -111,6 +117,8 @@ public class ErrorResponse {
         }
 
         /**
+         * Returns the details.
+         *
          * @return the details
          */
         public Detail[] getDetails() {
@@ -120,6 +128,8 @@ public class ErrorResponse {
 
     /**
      * Details of an error message of Power BI.
+     *
+     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
      */
     public static class Detail {
         private final String message;
@@ -137,6 +147,8 @@ public class ErrorResponse {
         }
 
         /**
+         * Returns the message.
+         *
          * @return the message
          */
         public String getMessage() {
@@ -144,6 +156,8 @@ public class ErrorResponse {
         }
 
         /**
+         * Returns the target.
+         *
          * @return the target
          */
         public String getTarget() {

@@ -77,7 +77,7 @@ import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.Overwrite
  *
  * @author Benjamin Wilhem, KNIME GmbH, Konstanz, Germany
  */
-class SendToPowerBINodeDialog extends NodeDialogPane {
+final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private final AzureADAuthenticator m_authenticator;
 

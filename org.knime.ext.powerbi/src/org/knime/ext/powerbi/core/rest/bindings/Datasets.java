@@ -51,9 +51,11 @@ package org.knime.ext.powerbi.core.rest.bindings;
 import java.util.Arrays;
 
 /**
+ * A PowerBI dataset collection.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Datasets {
+public final class Datasets {
 
     private Dataset[] value;
 

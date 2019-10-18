@@ -53,9 +53,11 @@ import org.knime.core.node.NodeFactory;
 import org.knime.core.node.NodeView;
 
 /**
+ * Send to Power BI factory.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class SendToPowerBINodeFactory extends NodeFactory<SendToPowerBINodeModel> {
+public final class SendToPowerBINodeFactory extends NodeFactory<SendToPowerBINodeModel> {
 
     @Override
     public SendToPowerBINodeModel createNodeModel() {
@@ -68,7 +70,8 @@ public class SendToPowerBINodeFactory extends NodeFactory<SendToPowerBINodeModel
     }
 
     @Override
-    public NodeView<SendToPowerBINodeModel> createNodeView(final int viewIndex, final SendToPowerBINodeModel nodeModel) {
+    public NodeView<SendToPowerBINodeModel> createNodeView(final int viewIndex,
+        final SendToPowerBINodeModel nodeModel) {
         return null;
     }
 

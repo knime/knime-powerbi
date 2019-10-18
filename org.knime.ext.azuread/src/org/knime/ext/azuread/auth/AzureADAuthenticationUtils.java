@@ -54,6 +54,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,10 +73,9 @@ import spark.Service;
 /**
  * Static utility class to authenticate with Azure Active Directory.
  *
- * TODO create a utility for general OAuth authentication
- *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
+// TODO: create a utility for general OAuth authentication
 public class AzureADAuthenticationUtils {
 
     /** The client id of the app registration */
@@ -110,7 +110,7 @@ public class AzureADAuthenticationUtils {
      * @throws AuthenticationException if the authentication fails because of any reason
      */
     @SuppressWarnings("resource") // The service and server are closed by a waiting thread
-    public static Future<AzureADAuthentication> authenticate(final OAuth20Scope scope) throws AuthenticationException {
+    static Future<AzureADAuthentication> authenticate(final OAuth20Scope scope) throws AuthenticationException {
         if (!OAUTH_IN_PROGRESS.getAndSet(true)) {
 
             // The future authentication object
@@ -178,12 +178,10 @@ public class AzureADAuthenticationUtils {
         final Service callbackServer) {
         new Thread(() -> {
             // Wait until the authentication is done
-            while (!authFuture.isDone() && !authFuture.isCancelled()) {
-                try {
-                    Thread.sleep(2000);
-                } catch (final InterruptedException ex) {
-                    // Ignore: Keep waiting
-                }
+            try {
+                authFuture.get();
+            } catch (final ExecutionException | InterruptedException | CancellationException ex) {
+                // Ignore
             }
             try {
                 service.close();
@@ -194,6 +192,7 @@ public class AzureADAuthenticationUtils {
             callbackServer.stop();
             OAUTH_IN_PROGRESS.set(false);
         }).start();
+
     }
 
     /** Get the auth code from the parameters of a request */
@@ -257,26 +256,33 @@ public class AzureADAuthenticationUtils {
             final long requestTime = System.currentTimeMillis();
             final OAuth2AccessToken updatedAuth = service.refreshAccessToken(refreshToken.get());
             return new DefaultAzureADAuthentication(updatedAuth.getAccessToken(), updatedAuth.getRefreshToken(),
-                requestTime + updatedAuth.getExpiresIn() * 1000);
+                requestTime + updatedAuth.getExpiresIn() * 1000l);
         } catch (final IOException | ExecutionException e) {
             // Re-throw the exception
             throw new AuthenticationException(e.getMessage(), e);
         }
     }
 
+    /**
+     * Class implementing an Microsoft Azure Active Directory authentication future.
+     *
+     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+     */
     private static final class AzureADAuthenticationFuture extends AbstractFuture<AzureADAuthentication> {
 
-        private void setResult(final AzureADAuthentication auth) {
+        void setResult(final AzureADAuthentication auth) {
             set(auth);
         }
 
-        private boolean setFailed(final Throwable throwable) {
+        boolean setFailed(final Throwable throwable) {
             return setException(throwable);
         }
     }
 
     /**
      * An exception that is thrown if the authentication with Azure Active Directory failed because of any reason.
+     *
+     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
      */
     public static class AuthenticationException extends Exception {
 
@@ -294,6 +300,8 @@ public class AzureADAuthenticationUtils {
     /**
      * An exception that is thrown if the authentication with Azure Active Directory failed because another
      * authentication is already in progress.
+     *
+     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
      */
     public static final class AuthenticaionInProgressException extends AuthenticationException {
         private static final long serialVersionUID = 1L;

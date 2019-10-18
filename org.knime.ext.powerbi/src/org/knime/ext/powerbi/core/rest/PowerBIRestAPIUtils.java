@@ -73,9 +73,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 
 /**
+ * Utility class to make PowerBI API calls.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class PowerBIRestAPIUtils {
+public final class PowerBIRestAPIUtils {
 
     private static final long CONNECTION_TIMEOUT = 30000;
 
@@ -193,8 +195,8 @@ public class PowerBIRestAPIUtils {
     }
 
     /**
-     * Calls "Push Datasets - Datasets PostRows" from the Power BI REST API. Add rows to an existing Power BI dataset and
-     * table.
+     * Calls "Push Datasets - Datasets PostRows" from the Power BI REST API. Add rows to an existing Power BI dataset
+     * and table.
      *
      * @param auth the authentication to use
      * @param datasetId the identifier of the dataset

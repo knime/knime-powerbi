@@ -51,6 +51,8 @@ package org.knime.ext.powerbi.core.rest.bindings;
 import com.google.common.base.MoreObjects;
 
 /**
+ * A PowerBI dataset.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public final class Dataset {

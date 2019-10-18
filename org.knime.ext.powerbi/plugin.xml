@@ -4,7 +4,7 @@
    <extension
          point="org.knime.workbench.repository.categories">
       <category
-            icon="icons/powerbi.png"
+            icon="icons/powerbi_category.png"
             level-id="powerbi"
             locked="true"
             name="Microsoft Power BI"

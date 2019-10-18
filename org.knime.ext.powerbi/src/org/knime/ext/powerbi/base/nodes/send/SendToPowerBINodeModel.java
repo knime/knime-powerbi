@@ -72,9 +72,9 @@ import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
+import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.ext.azuread.auth.DefaultOAuth20Scope;
 import org.knime.ext.azuread.auth.OAuth20Scope;
-import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.OverwritePolicy;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
@@ -88,9 +88,11 @@ import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
 
 /**
+ * Send to Power BI node model.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-class SendToPowerBINodeModel extends NodeModel {
+final class SendToPowerBINodeModel extends NodeModel {
 
     private static final double PROGRESS_PREPARE = 0.3;
 
@@ -127,7 +129,7 @@ class SendToPowerBINodeModel extends NodeModel {
         final Map<String, Integer> columnIndexMap = getColumnIndexMap(inSpecs[0]);
         if (columnIndexMap.isEmpty()) {
             throw new InvalidSettingsException("No column with a compatible datatype is available."
-                + "Note the list of supported datatypes in the node desciption.");
+                + " See node description for the list of supported datatypes.");
         }
         if (columnIndexMap.size() > POWERBI_MAX_COLUMNS) {
             throw new InvalidSettingsException(
@@ -149,11 +151,13 @@ class SendToPowerBINodeModel extends NodeModel {
         final double rowCount = inTable.size();
         final DataTableSpec inSpec = inTable.getDataTableSpec();
 
-        // TODO make sure to keep this in mind: https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
-
-        // Refresh the access token
-        // Note: This is not best practice but works for us now.
-        // In future versions we should only request a new access token if the old one is not valid anymore and check this for every API call
+        // TODO make sure to keep this in mind:
+        // https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
+        /*
+         * Refresh the access token
+         * Note: This is not best practice but works for us now. In future versions we should only request a new
+         * access token if the old one is not valid anymore and check this for every API call
+         */
         final AzureADAuthentication auth;
         try {
             auth = AzureADAuthenticationUtils.refreshToken(m_settings.getAuthentication());
@@ -235,7 +239,7 @@ class SendToPowerBINodeModel extends NodeModel {
                 rowBuilder.reset();
             }
             rowBuilder.addRow(row);
-            execSendRows.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long) rowCount);
+            execSendRows.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long)rowCount);
             rowIdx++;
             // TODO can we delete the dataset that is uploaded half way?
             exec.checkCanceled();
@@ -331,7 +335,7 @@ class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        m_settings.validateSettings(settings);
+        SendToPowerBINodeSettings.validateSettings(settings);
     }
 
     @Override

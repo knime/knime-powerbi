@@ -49,9 +49,11 @@
 package org.knime.ext.powerbi.core.rest.bindings;
 
 /**
+ * A PowerBI group.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Group {
+public final class Group {
 
     private final String name;
 
@@ -66,6 +68,8 @@ public class Group {
     }
 
     /**
+     * Returns the name.
+     *
      * @return the name
      */
     public String getName() {
@@ -73,6 +77,8 @@ public class Group {
     }
 
     /**
+     * Returns the id.
+     *
      * @return the id
      */
     public String getId() {
@@ -80,7 +86,9 @@ public class Group {
     }
 
     /**
-     * @return the isReadOnly
+     * Flag indicating if the group is read-only.
+     *
+     * @return {@code true} if read-only, {@code false} otherwise
      */
     public boolean isReadOnly() {
         return isReadOnly;

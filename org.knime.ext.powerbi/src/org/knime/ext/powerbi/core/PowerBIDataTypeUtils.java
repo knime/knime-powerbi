@@ -67,8 +67,10 @@ import org.knime.core.data.time.localdatetime.LocalDateTimeValue;
 import com.google.gson.Gson;
 
 /**
- * See https://docs.microsoft.com/en-us/power-bi/developer/api-dataset-properties
+ * Utility class for Power BI data types.
  *
+ * @see <a href="https://docs.microsoft.com/en-us/power-bi/developer/api-dataset-properties">Power BI data type
+ *      restrictions types</a>
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public class PowerBIDataTypeUtils {

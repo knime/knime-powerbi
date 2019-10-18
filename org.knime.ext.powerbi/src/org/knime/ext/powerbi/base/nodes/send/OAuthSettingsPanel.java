@@ -67,16 +67,13 @@ import org.knime.ext.azuread.auth.Authenticator.AuthenticatorState;
 /**
  * A default settings panel for OAuth based authentication with a service.
  *
- * TODO Is this always OAuth or could it be something else?
- *
- * TODO Move somewhere else where it can be reused
- *
- * TODO Add options on where to save the token (see GoogleAuthNodeDialogPane)
- *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author Ole Ostergaard, KNIME GmbH, Konstanz, Germany
  */
-public class OAuthSettingsPanel extends JPanel {
+//TODO: Is this always OAuth or could it be something else?
+//TODO: Move somewhere else where it can be reused
+//TODO: Add options on where to save the token (see GoogleAuthNodeDialogPane)
+final class OAuthSettingsPanel extends JPanel {
 
     private static final String STATUS_LABEL_TEXT = "Status: ";
 
@@ -111,7 +108,7 @@ public class OAuthSettingsPanel extends JPanel {
      *
      * @param auth the authenticator which handles the authentication
      */
-    public OAuthSettingsPanel(final Authenticator auth) {
+    OAuthSettingsPanel(final Authenticator auth) {
         super(new GridBagLayout());
         m_auth = auth;
 
@@ -140,6 +137,7 @@ public class OAuthSettingsPanel extends JPanel {
     }
 
     private void clearAuthentication() {
+        m_auth.cancel();
         m_auth.clearAuthentication();
         // Note: The UI will update because of an authenticator state change
     }

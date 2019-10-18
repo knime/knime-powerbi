@@ -49,9 +49,11 @@
 package org.knime.ext.powerbi.core.rest.bindings;
 
 /**
+ * A PowerBI groups collection.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Groups {
+public final class Groups {
 
     private final Group[] value;
 
@@ -60,7 +62,9 @@ public class Groups {
     }
 
     /**
-     * @return the value
+     * Returns the groups.
+     *
+     * @return the groups
      */
     public Group[] getValue() {
         return value;

@@ -49,6 +49,8 @@
 package org.knime.ext.azuread.auth;
 
 /**
+ * OAuth 20 scope interface.
+ *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
 public interface OAuth20Scope {

@@ -53,7 +53,7 @@ package org.knime.ext.powerbi.core.rest.bindings;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class Column {
+public final class Column {
 
     private final String dataType;
 

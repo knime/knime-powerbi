@@ -58,17 +58,23 @@ import java.util.Optional;
 public interface AzureADAuthentication {
 
     /**
+     * Returns the access token.
+     *
      * @return the access token
      */
     String getAccessToken();
 
     /**
-     * @return the refresh token if set
+     * Returns the refresh token if available.
+     *
+     * @return the refresh token if available
      */
     Optional<String> getRefreshToken();
 
     /**
-     * @return the time until the access token is valid. In milliseconds from 1. January 1970.
+     * Returns the time up until the access token is valid in milliseconds from 1. January 1970.
+     *
+     * @return the time up until the access token is valid
      */
     long getValidUntil();
 }

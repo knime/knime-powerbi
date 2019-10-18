@@ -48,7 +48,6 @@
  */
 package org.knime.ext.azuread.auth;
 
-import java.util.Date;
 import java.util.Optional;
 
 /**
@@ -57,7 +56,7 @@ import java.util.Optional;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public class DefaultAzureADAuthentication implements AzureADAuthentication {
+public final class DefaultAzureADAuthentication implements AzureADAuthentication {
 
     private final String m_accessToken;
 
@@ -76,17 +75,6 @@ public class DefaultAzureADAuthentication implements AzureADAuthentication {
         m_accessToken = accessToken;
         m_refreshToken = Optional.ofNullable(refreshToken);
         m_validUntil = validUntil;
-    }
-
-    /**
-     * Create a new default {@link AzureADAuthentication} with the given tokens.
-     *
-     * @param accessToken the access token
-     * @param refreshToken the refresh token. Can be <code>null</code>.
-     * @param validUntil the date until the access token is valid
-     */
-    public DefaultAzureADAuthentication(final String accessToken, final String refreshToken, final Date validUntil) {
-        this(accessToken, refreshToken, validUntil.getTime());
     }
 
     @Override
