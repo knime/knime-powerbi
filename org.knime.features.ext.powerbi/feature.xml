@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="org.knime.features.powerbi"
+      id="org.knime.features.ext.powerbi"
       label="KNIME Power BI Integration"
       version="4.1.0.qualifier"
       provider-name="KNIME AG, Zurich, Switzerland">
