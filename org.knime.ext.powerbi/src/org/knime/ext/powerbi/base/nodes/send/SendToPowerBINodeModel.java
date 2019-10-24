@@ -70,6 +70,7 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.util.ConvenienceMethods;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
@@ -315,6 +316,7 @@ final class SendToPowerBINodeModel extends NodeModel {
     /** Get a map of compatible columns and their index in the input table */
     private Map<String, Integer> getColumnIndexMap(final DataTableSpec tableSpec) {
         final Map<String, Integer> columns = new HashMap<>();
+        final List<String> incompatibleColumns = new ArrayList<String>();
         boolean hasIncompatibleColumns = false;
         for (int i = 0; i < tableSpec.getNumColumns(); i++) {
             final DataColumnSpec columnSpec = tableSpec.getColumnSpec(i);
@@ -322,12 +324,15 @@ final class SendToPowerBINodeModel extends NodeModel {
                 columns.put(tableSpec.getColumnNames()[i], i);
             } else {
                 hasIncompatibleColumns = true;
-                LOGGER.warn("The column \"" + columnSpec.getName()
-                    + "\" has a datatype that is not supported by Power BI. The column will be ignored.");
+                incompatibleColumns.add(columnSpec.getName());
             }
         }
         if (hasIncompatibleColumns) {
-            setWarningMessage("The table contains incompatible columns.");
+            LOGGER.warn("The table contains " + incompatibleColumns.size() + " incompatible columns which will be ignored. "
+                + "See node description for the list of supported datatypes.");
+            String message = "Incompatible columns: ";
+            message += ConvenienceMethods.getShortStringFrom(incompatibleColumns, 4);
+            setWarningMessage(message);
         }
         return columns;
     }
