@@ -180,6 +180,10 @@ public class AzureADAuthenticationUtils {
             // Wait until the authentication is done
             try {
                 authFuture.get();
+                /* Wait for a few seconds before stopping the service, otherwise users
+                 * might get a 404 due to a race condition between stopping the service
+                 * and retrieving the redirect page. Similar issue as (SRV-2482). */
+                Thread.sleep(5000);
             } catch (final ExecutionException | InterruptedException | CancellationException ex) {
                 // Ignore
             }
