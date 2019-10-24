@@ -234,9 +234,13 @@ final class SendToPowerBINodeModel extends NodeModel {
         execSendRows.setProgress(0);
         for (final DataRow row : inTable) {
             if (!rowBuilder.acceptsRows()) {
-                // Send to Power BI
-                PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
-                rowBuilder.reset();
+                try {
+                    // Send to Power BI
+                    PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
+                    rowBuilder.reset();
+                } catch (PowerBIResponseException ex) {
+                    throw new RuntimeException("Error while sending data to PowerBI. See log for details.", ex);
+                }
             }
             rowBuilder.addRow(row);
             execSendRows.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long)rowCount);
