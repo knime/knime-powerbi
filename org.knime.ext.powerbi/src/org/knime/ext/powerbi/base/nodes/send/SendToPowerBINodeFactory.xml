@@ -103,7 +103,8 @@
 					<li>
 						<b>Append</b>
 						: If the dataset already exists the data will be appended to the
-						existing dataset. Note that the dataset has to be a "Push" dataset
+						existing dataset. Note that the dataset has to be a 
+						<a href="https://docs.microsoft.com/en-us/power-bi/service-real-time-streaming#types-of-real-time-datasets">"Push dataset"</a> 
 						for this option to work.
 					</li>
 					<li>
