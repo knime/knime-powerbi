@@ -48,12 +48,21 @@
  */
 package org.knime.ext.powerbi.base.nodes.send;
 
-import org.knime.core.data.DataTableSpec;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.commons.io.FileUtils;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
-import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.config.Config;
+import org.knime.core.util.FileUtil;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
 
@@ -61,6 +70,7 @@ import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
  * Settings store managing all configurations required to send to data to PowerBI.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeSettings {
 
@@ -82,6 +92,16 @@ final class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_OVERWRITE_POLICY = "overwrite_policy";
 
+    private static final String CFG_KEY_FILESYSTEM_LOCATION = "filesystem_location";
+
+    private static final String CFG_KEY_CREDENTIALS_SAVE_LOCATION = "credentials_save_location";
+
+    private static final String CFG_KEY_NODE_ID = "node_id";
+
+    private static final String LOCAL_FILE_ENCODING = "UTF-8";
+
+    private static final String POWER_BI_CREDENTIAL_FILE_HEADER = "KNIME PowerBI Credentials";
+
     private AzureADAuthentication m_authentication;
 
     private String m_workspace = "";
@@ -91,6 +111,12 @@ final class SendToPowerBINodeSettings {
     private String m_tableName = "";
 
     private OverwritePolicy m_overwritePolicy = OverwritePolicy.ABORT;
+
+    private String m_filesystemLocation = "";
+
+    private CredentialsLocationType m_credentialsSaveLocation = CredentialsLocationType.MEMORY;
+
+    private String m_nodeId = UUID.randomUUID().toString();
 
     /**
      * Policy how to proceed when output table exists (overwrite, abort, append).
@@ -174,18 +200,45 @@ final class SendToPowerBINodeSettings {
         m_overwritePolicy = overwritePolicy;
     }
 
-    void saveSettingsTo(final NodeSettingsWO settings) {
-        if (getAuthentication() != null) {
-            final Config authConfig = settings.addConfig(CFG_KEY_AUTHENTICATION);
-            authConfig.addPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY, getAuthentication().getAccessToken());
-            authConfig.addPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY,
-                getAuthentication().getRefreshToken().orElseGet(() -> null));
-            authConfig.addLong(CFG_KEY_VALID_UNTIL, getAuthentication().getValidUntil());
-        }
+    /**
+     * @return the filesystemLocation
+     */
+    String getFilesystemLocation() {
+        return m_filesystemLocation;
+    }
+
+    /**
+     * @param filesystemLocation the filesystemLocation to set
+     */
+    void setFilesystemLocation(final String filesystemLocation) {
+        m_filesystemLocation = filesystemLocation;
+    }
+
+    /**
+     * @return the credentialsSaveLocation
+     */
+    CredentialsLocationType getCredentialsSaveLocation() {
+        return m_credentialsSaveLocation;
+    }
+
+    /**
+     * @param credentialsSaveLocation the credentialsSaveLocation to set
+     */
+    void setCredentialsSaveLocation(final CredentialsLocationType credentialsSaveLocation) {
+        m_credentialsSaveLocation = credentialsSaveLocation;
+    }
+
+    void saveSettingsTo(final NodeSettingsWO settings) throws IOException, InvalidSettingsException {
         settings.addString(CFG_KEY_WORKSPACE, getWorkspace());
         settings.addString(CFG_KEY_DATASET_NAME, getDatasetName());
         settings.addString(CFG_KEY_TABLE_NAME, getTableName());
         settings.addString(CFG_KEY_OVERWRITE_POLICY, getOverwritePolicy().name());
+
+        settings.addString(CFG_KEY_NODE_ID, m_nodeId);
+        settings.addString(CFG_KEY_FILESYSTEM_LOCATION, getFilesystemLocation());
+        settings.addString(CFG_KEY_CREDENTIALS_SAVE_LOCATION, getCredentialsSaveLocation().getActionCommand());
+
+        saveAuthentication(settings);
     }
 
     static void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
@@ -200,42 +253,250 @@ final class SendToPowerBINodeSettings {
         if (tableName == null || tableName.trim().isEmpty()) {
             throw new InvalidSettingsException("The table name must be set.");
         }
-    }
 
-    void loadSettingsFrom(final NodeSettingsRO settings, @SuppressWarnings("unused") final DataTableSpec[] specs)
-        throws NotConfigurableException {
-        try {
-            if (settings.containsKey(CFG_KEY_AUTHENTICATION)) {
-                final Config authConfig = settings.getConfig(CFG_KEY_AUTHENTICATION);
-                final String accessToken = authConfig.getPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY);
-                final String refreshToken = authConfig.getPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY);
-                final long validUntil = authConfig.getLong(CFG_KEY_VALID_UNTIL);
-                setAuthentication(new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil));
-            } else {
-                setAuthentication(null);
+        // Check selected location if chosen from radio buttons.
+        if (CredentialsLocationType.fromActionCommand(settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION))
+            .equals(CredentialsLocationType.FILESYSTEM)) {
+            File file = resolveFilesystemLocation(settings.getString(CFG_KEY_FILESYSTEM_LOCATION));
+
+            if (file.exists()) {
+                if (!file.isFile()) {
+                    throw new InvalidSettingsException("Selected credetials storage location must be a file.");
+                }
             }
-            setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
-            setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
-            setTableName(settings.getString(CFG_KEY_TABLE_NAME));
-            setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));
-        } catch (final InvalidSettingsException e) {
-            // Leave defaults
         }
     }
 
-    void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
-        if (settings.containsKey(CFG_KEY_AUTHENTICATION)) {
-            final Config authConfig = settings.getConfig(CFG_KEY_AUTHENTICATION);
-            final String accessToken = authConfig.getPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY);
-            final String refreshToken = authConfig.getPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY);
-            final long validUntil = authConfig.getLong(CFG_KEY_VALID_UNTIL);
-            setAuthentication(new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil));
-        } else {
-            setAuthentication(null);
-        }
+    void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException, IOException {
+        m_nodeId = settings.getString(CFG_KEY_NODE_ID);
+        setFilesystemLocation(settings.getString(CFG_KEY_FILESYSTEM_LOCATION));
+        setCredentialsSaveLocation(
+            CredentialsLocationType.fromActionCommand(settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION)));
+
+        loadAuthentication(settings);
+
         setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
         setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
         setTableName(settings.getString(CFG_KEY_TABLE_NAME));
         setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));
+    }
+
+    /**
+     * Clear the stored credentials of specified type. Authentication will always be set to null after this call.
+     *
+     * @param locationType The type of credentials to clear.
+     * @throws IOException If {@link CredentialsLocationType#FILESYSTEM} and the file does not conform expected
+     *             specification. Also see {@link #checkCredentialFileHeader(File)}.
+     * @throws InvalidSettingsException If {@link CredentialsLocationType#FILESYSTEM} and the selected file path can't
+     *             be resolved.
+     */
+    void clearAuthentication(final CredentialsLocationType locationType) throws IOException, InvalidSettingsException {
+
+        switch (locationType) {
+            case MEMORY:
+                InMemoryCredentialStore.instance().remove(m_nodeId);
+                break;
+
+            case FILESYSTEM:
+                File credentialsFile = resolveFilesystemLocation(getFilesystemLocation());
+
+                if (credentialsFile.exists()) {
+                    // To make sure not to delete something on accident, only delete if the file has the magic header.
+                    checkCredentialFileHeader(credentialsFile);
+
+                    credentialsFile.delete();
+                }
+                break;
+
+            case NODE:
+                break;
+
+            default:
+                break;
+        }
+
+        setAuthentication(null);
+    }
+
+    /**
+     * Save the authentication to the selected credentials location.
+     *
+     * @param settings Setting to save authentication to if {@link CredentialsLocationType#FILESYSTEM}.
+     * @throws IOException If {@link CredentialsLocationType#FILESYSTEM} and the credentials can't be saved to file.
+     * @throws InvalidSettingsException If {@link CredentialsLocationType#FILESYSTEM} and the selected file path can't
+     *             be resolved.
+     */
+    private void saveAuthentication(final NodeSettingsWO settings) throws IOException, InvalidSettingsException {
+
+        if (getAuthentication() == null) {
+            return;
+        }
+
+        switch (m_credentialsSaveLocation) {
+            case MEMORY:
+                InMemoryCredentialStore.instance().put(m_nodeId, getAuthentication());
+                break;
+
+            case FILESYSTEM:
+                File credentialsFile = resolveFilesystemLocation(getFilesystemLocation());
+                saveCredentialsToFile(credentialsFile, getAuthentication());
+                break;
+
+            case NODE:
+                final Config authConfig = settings.addConfig(CFG_KEY_AUTHENTICATION);
+                authConfig.addPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY, getAuthentication().getAccessToken());
+                authConfig.addPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY,
+                    getAuthentication().getRefreshToken().orElseGet(() -> null));
+                authConfig.addLong(CFG_KEY_VALID_UNTIL, getAuthentication().getValidUntil());
+
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Load the authentication from the selected credentials location.
+     *
+     * @param settings Setting to load authentication from if {@link CredentialsLocationType#FILESYSTEM}.
+     * @throws IOException If {@link CredentialsLocationType#FILESYSTEM} and the credentials can't be loaded from file.
+     * @throws InvalidSettingsException If {@link CredentialsLocationType#FILESYSTEM} and the selected file path can't
+     *             be resolved.
+     */
+    private void loadAuthentication(final NodeSettingsRO settings) throws IOException, InvalidSettingsException {
+
+        AzureADAuthentication credentials = null;
+
+        switch (m_credentialsSaveLocation) {
+            case MEMORY:
+                credentials = InMemoryCredentialStore.instance().get(m_nodeId);
+                break;
+
+            case FILESYSTEM:
+                File credentialsFile = resolveFilesystemLocation(getFilesystemLocation());
+                try {
+                    credentials = readCredentialsFromFile(credentialsFile);
+                } catch (IOException ex) {
+                    setAuthentication(null);
+                    throw ex;
+                }
+                break;
+
+            case NODE:
+                if (!settings.containsKey(CFG_KEY_AUTHENTICATION)) {
+                    setAuthentication(null);
+                    return;
+                }
+
+                final Config authConfig = settings.getConfig(CFG_KEY_AUTHENTICATION);
+                final String accessToken = authConfig.getPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY);
+                final String refreshToken = authConfig.getPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY);
+                final long validUntil = authConfig.getLong(CFG_KEY_VALID_UNTIL);
+                credentials = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
+
+            default:
+                break;
+        }
+
+        setAuthentication(credentials);
+    }
+
+    /**
+     * Attempts to save the specified credentials to the specified file.
+     *
+     * @param saveLocation The file to save to. Will be created if not yet existing, otherwise overwritten.
+     * @param auth The authentication to save.
+     * @throws IOException If the file exists and does not conform expected specification. Also see
+     *             {@link #checkCredentialFileHeader(File)}. Or file can't be written.
+     */
+    private static void saveCredentialsToFile(final File saveLocation, final AzureADAuthentication auth)
+        throws IOException {
+        String authTokens = POWER_BI_CREDENTIAL_FILE_HEADER + "\n";
+        authTokens += auth.getAccessToken() + "\n";
+        authTokens += auth.getRefreshToken().orElseGet(() -> "") + "\n";
+        authTokens += auth.getValidUntil();
+
+        try {
+            if (saveLocation.exists()) {
+                checkCredentialFileHeader(saveLocation);
+            }
+
+            FileUtils.writeStringToFile(saveLocation, authTokens, LOCAL_FILE_ENCODING);
+        } catch (IOException ex) {
+            throw new IOException("Can't write to selected credentials file. Reason: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Attempts to read credentials from the specified file.
+     *
+     * @param loadLocation The file to read from.
+     * @return The read credentials.
+     * @throws IOException If the file exists and does not conform expected specification. Also see
+     *             {@link #checkCredentialFileHeader(File)}. Or file can't be read.
+     */
+    private static AzureADAuthentication readCredentialsFromFile(final File loadLocation) throws IOException {
+        AzureADAuthentication auth = null;
+        try {
+            if (!loadLocation.exists()) {
+                return null;
+            }
+
+            checkCredentialFileHeader(loadLocation);
+
+            List<String> lines = FileUtils.readLines(loadLocation, LOCAL_FILE_ENCODING);
+            final String accessToken = lines.get(1);
+            String refreshToken = lines.get(2);
+            if (refreshToken.isEmpty()) {
+                refreshToken = null;
+            }
+            final long validUntil = Long.parseLong(lines.get(3));
+
+            auth = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
+        } catch (IOException ex) {
+            throw new IOException("Can't read from selected credentials file. Reason: " + ex.getMessage(), ex);
+        }
+        return auth;
+    }
+
+    /**
+     * Checks specified file for {@link #POWER_BI_CREDENTIAL_FILE_HEADER}.
+     *
+     * @param filesystemLocation The file to check.
+     * @throws IOException If file can't be read or doesn't contain the header in its first line.
+     */
+    private static void checkCredentialFileHeader(final File filesystemLocation) throws IOException {
+        String firstLine = "";
+        try {
+            firstLine = Files.lines(filesystemLocation.toPath()).findFirst().get();
+        } catch (Exception ex) {
+            throw new IOException("Selected file seems not to be a valid KNIME PowerBI credentials file.", ex);
+        }
+
+        if (!firstLine.equals(POWER_BI_CREDENTIAL_FILE_HEADER)) {
+            throw new IOException("Selected file seems not to be a valid KNIME PowerBI credentials file.");
+        }
+    }
+
+    /**
+     * Attempts to resolve the given String to File, also resolving the KNIME protocol.
+     *
+     * @param filesystemLocation The String to resolve.
+     * @return The file corresponding to the given String.
+     * @throws InvalidSettingsException If the given String can't be resolved.
+     */
+    private static File resolveFilesystemLocation(final String filesystemLocation) throws InvalidSettingsException {
+        Path resolvedPath;
+        if (filesystemLocation.isEmpty()) {
+            throw new InvalidSettingsException("Local file path must not be empty.");
+        }
+        try {
+            resolvedPath = FileUtil.resolveToPath(FileUtil.toURL(filesystemLocation));
+            if (resolvedPath == null) {
+                throw new InvalidSettingsException("Not a valid local file path: '" + filesystemLocation + "'.");
+            }
+        } catch (IOException | URISyntaxException | InvalidPathException e) {
+            throw new InvalidSettingsException("Not a valid local file path: '" + filesystemLocation + "'.", e);
+        }
+        return new File(resolvedPath.toUri());
     }
 }

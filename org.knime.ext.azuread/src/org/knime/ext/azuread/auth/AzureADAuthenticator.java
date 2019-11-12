@@ -61,9 +61,10 @@ import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationExcep
  * Microsoft Active Directory authenticator implementation.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 // TODO: Make abstract version (or default with generic)
-public class AzureADAuthenticator implements Authenticator {
+public class AzureADAuthenticator implements Authenticator<AzureADAuthentication> {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(AzureADAuthentication.class);
 
@@ -162,11 +163,7 @@ public class AzureADAuthenticator implements Authenticator {
         m_listeners.add(listener);
     }
 
-    /**
-     * Get the authentication if it succeeded.
-     *
-     * @return the authentication or <code>null</code>
-     */
+    @Override
     public AzureADAuthentication getAuthentication() {
         return m_auth;
     }

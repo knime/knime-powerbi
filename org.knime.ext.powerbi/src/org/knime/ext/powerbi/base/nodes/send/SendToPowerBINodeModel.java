@@ -92,6 +92,7 @@ import org.knime.ext.powerbi.core.rest.bindings.Tables;
  * Send to Power BI node model.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeModel extends NodeModel {
 
@@ -207,7 +208,7 @@ final class SendToPowerBINodeModel extends NodeModel {
                     final Table table = getTableWithName(tables, tableName);
                     if (table == null) {
                         throw new InvalidSettingsException("The dataset with the name \"" + datasetName
-                            + "\" already exists but has not table with the name \"" + tableName + "\".");
+                            + "\" already exists but has no table with the name \"" + tableName + "\".");
                     }
                     break;
 
@@ -339,7 +340,11 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
-        m_settings.saveSettingsTo(settings);
+        try {
+            m_settings.saveSettingsTo(settings);
+        } catch (IOException | InvalidSettingsException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     @Override
@@ -349,7 +354,11 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
-        m_settings.loadValidatedSettingsFrom(settings);
+        try {
+            m_settings.loadValidatedSettingsFrom(settings);
+        } catch (IOException ex) {
+            throw new InvalidSettingsException(ex.getMessage(), ex);
+        }
     }
 
     @Override

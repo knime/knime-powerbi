@@ -76,10 +76,36 @@
 			<option name="Cancel">
 				Cancel a running authentication process.
 			</option>
-			<option name="Clear Credentials">
-				Delete the saved credentials from the node
-				settings. This should be done before sharing a workflow with this
-				node.
+			<option name="Credentials Storage Location">
+				Select where authentication credentials should be stored:
+				<ul>
+				<li>
+					<b>Memory</b>
+					: The authentication credentials will be kept in memory. 
+					They are discarded when exiting KNIME. 
+				</li>
+				<li>
+					<b>Local File</b>
+					: The authentication credentials will be saved and loaded to and from the selected
+					file. 
+				</li>
+				<li>
+					<b>Node</b>
+					: The authentication credentials will be saved in the node settings. 
+				</li>
+			</ul>
+			</option>
+			<option name="Clear Selected Credentials">
+				Deletes the authentication credentials stored at the selected location.
+				If <i>Local File</i> was selected, the file will be deleted if
+				it contains previously stored credentials. Otherwise, the file will be left
+				untouched and an error is displayed.
+			</option>
+			<option name="Clear All Credentials">
+				Deletes all stored authentication credentials. Also see description of 
+				<i>Clear Selected Credentials</i> button. In case you do not want to share your credentials
+				with this workflow, all credentials should be cleared beforehand. 
+				
 			</option>
 		</tab>
 		<tab name="Dataset Selection">

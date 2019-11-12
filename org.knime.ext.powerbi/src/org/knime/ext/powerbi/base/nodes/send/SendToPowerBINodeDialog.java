@@ -52,6 +52,7 @@ import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.io.IOException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -66,6 +67,7 @@ import javax.swing.border.TitledBorder;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeDialogPane;
+import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
@@ -76,8 +78,11 @@ import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.Overwrite
  * Dialog for the Send to Power BI node.
  *
  * @author Benjamin Wilhem, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeDialog extends NodeDialogPane {
+
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
     private final AzureADAuthenticator m_authenticator;
 
@@ -95,26 +100,57 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JRadioButton m_abortButton;
 
+    private OAuthSettingsPanel m_authPanel;
+
     public SendToPowerBINodeDialog() {
         m_settings = new SendToPowerBINodeSettings();
         m_authenticator = new AzureADAuthenticator(SendToPowerBINodeModel.OAUTH_POWERBI_SCOPE);
+        m_authPanel = new OAuthSettingsPanel(m_authenticator);
         addTab("Options", createOptionsPanel());
     }
 
     private JPanel createOptionsPanel() {
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints gbc = createGBC();
+        gbc.weighty = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
 
         // Authentication panel
-        final OAuthSettingsPanel authPanel = new OAuthSettingsPanel(m_authenticator);
-        authPanel.setBorder(createTitledBorder("Authentication"));
-        panel.add(authPanel, gbc);
+        m_authPanel.setBorder(createTitledBorder("Authentication"));
+        panel.add(m_authPanel, gbc);
+
+        // Listeners to clear stored credentials
+        m_authPanel.addClearSelectedLocationListener(a -> {
+            CredentialsLocationType locationType = m_authPanel.getCredentialsSaveLocation();
+            try {
+                m_settings.clearAuthentication(locationType);
+            } catch (IOException | InvalidSettingsException ex) {
+                String msg =
+                    "Could not clear " + locationType.getShortText() + " credentials. Reason: " + ex.getMessage();
+                LOGGER.warn(msg, ex);
+            }
+        });
+
+        m_authPanel.addClearAllLocationListener(a -> {
+            for (CredentialsLocationType clt : CredentialsLocationType.values()) {
+                try {
+                    m_settings.clearAuthentication(clt);
+                } catch (IOException | InvalidSettingsException ex) {
+                    String msg = "Could not clear " + clt.getShortText() + " credentials. Reason: " + ex.getMessage();
+                    LOGGER.warn(msg, ex);
+                }
+            }
+        });
 
         gbc.gridy++;
         // Dataset and Table selection
         final JPanel datasetPanel = createDatasetTablePanel();
         datasetPanel.setBorder(createTitledBorder("Dataset Selection"));
         panel.add(datasetPanel, gbc);
+
+        // Hidden panel to make the dialog always stick to the top
+        gbc.weighty = 1;
+        panel.add(new JPanel(), gbc);
 
         return panel;
     }
@@ -206,13 +242,32 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             overwritePolicy = OverwritePolicy.ABORT;
         }
         m_settings.setOverwritePolicy(overwritePolicy);
-        m_settings.saveSettingsTo(settings);
+
+        CredentialsLocationType saveLocation = m_authPanel.getCredentialsSaveLocation();
+        m_settings.setCredentialsSaveLocation(saveLocation);
+        m_settings.setFilesystemLocation(m_authPanel.getFilesystemLocation());
+
+        try {
+            m_settings.saveSettingsTo(settings);
+        } catch (IOException ex) {
+            throw new InvalidSettingsException(ex.getMessage(), ex);
+        }
     }
 
     @Override
     protected void loadSettingsFrom(final NodeSettingsRO settings, final DataTableSpec[] specs)
         throws NotConfigurableException {
-        m_settings.loadSettingsFrom(settings, specs);
+
+        // Do not block dialog if problem occurs
+        try {
+            m_settings.loadValidatedSettingsFrom(settings);
+        } catch (InvalidSettingsException | IOException ex) {
+            LOGGER.warn("Can't load settings. Reason: " + ex.getMessage(), ex);
+        }
+
+        m_authPanel.setCredentialsSaveLocation(m_settings.getCredentialsSaveLocation());
+        m_authPanel.setFilesystemLocation(m_settings.getFilesystemLocation());
+
         m_authenticator.setAuthentication(m_settings.getAuthentication());
         m_workspace.setText(m_settings.getWorkspace());
         m_datasetName.setText(m_settings.getDatasetName());

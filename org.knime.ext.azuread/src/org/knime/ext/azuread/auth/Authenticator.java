@@ -48,6 +48,7 @@
  */
 package org.knime.ext.azuread.auth;
 
+import java.awt.Color;
 import java.util.EventListener;
 
 /**
@@ -55,8 +56,10 @@ import java.util.EventListener;
  * get the state.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @param <T> The type of the authentication object managed by this Authenticator.
  */
-public interface Authenticator {
+public interface Authenticator<T> {
 
     /**
      * Start the authentication flow.
@@ -105,33 +108,52 @@ public interface Authenticator {
     }
 
     /**
+     * Get the authentication if it succeeded.
+     *
+     * @return the authentication or <code>null</code>
+     */
+    T getAuthentication();
+
+    /**
      * A state of an {@link Authenticator}. Use {@link #toString()} to get a user-friendly description of the state.
      */
     public enum AuthenticatorState {
             /** User is not authenticated */
-            NOT_AUTHENTICATED("Not Authenticated"),
+            NOT_AUTHENTICATED("Not Authenticated", Color.BLACK),
 
             /** User is authenticated */
-            AUTHENTICATED("Authenticated"),
+            AUTHENTICATED("Authenticated", Color.GREEN),
 
             /** Authentication is currently in progress */
-            AUTHENTICATION_IN_PROGRESS("Authenticating..."),
+            AUTHENTICATION_IN_PROGRESS("Authenticating...", Color.BLACK),
 
             /** Authentication was canceled */
-            CANCELED("Canceled"),
+            CANCELED("Canceled", Color.ORANGE),
 
             /** Authentication failed because of any reason */
-            FAILED("Authentication Failed");
+            FAILED("Authentication Failed", Color.RED);
 
         private final String m_text;
 
-        private AuthenticatorState(final String text) {
+        private final Color m_displayColor;
+
+        private AuthenticatorState(final String text, final Color displayColor) {
             m_text = text;
+            m_displayColor = displayColor;
         }
 
         @Override
         public String toString() {
             return m_text;
+        }
+
+        /**
+         * Get the color this authenticator state should be displayed as.
+         *
+         * @return Color for displaying.
+         */
+        public Color getDisplayColor() {
+            return m_displayColor;
         }
     }
 }
