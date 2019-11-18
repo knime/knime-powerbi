@@ -123,7 +123,7 @@ final class OAuthSettingsPanel extends JPanel {
     private final ButtonGroup m_locationsButtonGroup = new ButtonGroup();
 
     // Hack, this is only used for its dialog
-    private DialogComponentFileChooser m_credentialFileLocation = new DialogComponentFileChooser(
+    private final DialogComponentFileChooser m_credentialFileLocation = new DialogComponentFileChooser(
         new SettingsModelString("PLACEHOLDER_NOT_USED", ""),
         OAuthSettingsPanel.class.getCanonicalName(), JFileChooser.SAVE_DIALOG, false);
 
@@ -133,6 +133,8 @@ final class OAuthSettingsPanel extends JPanel {
     private JRadioButton m_filesystemLocationButton;
 
     private JRadioButton m_nodeSettingsLocationButton;
+
+    private JPanel m_filesystemFileChooserPanel;
 
     /**
      * Create a new OAuth authentication panel which uses the given authenticator to do the authentication.
@@ -186,8 +188,6 @@ final class OAuthSettingsPanel extends JPanel {
         m_authButtonOrCancelPanel.setPreferredSize(new Dimension(DEFAULT_COLUMN_WIDTH, DEFAULT_CELL_HEIGHT));
     }
 
-    // <<<<<<<<<<<<<<<< Actions
-
     private void startAuthentication() {
         m_auth.authenticate();
         // Note: The UI will update because of an authenticator state change
@@ -224,9 +224,11 @@ final class OAuthSettingsPanel extends JPanel {
         if (showCancel) {
             GridBagConstraints gbc = getDefaultGBC(false);
             gbc.insets = new Insets(5, 0, 5, 0);
+            gbc.weightx = 0.7;
 
             m_authButtonOrCancelPanel.add(m_progressBar, gbc);
             gbc.gridx++;
+            gbc.weightx = 0.3;
             gbc.insets = new Insets(5, 10, 5, 0);
 
             m_authButtonOrCancelPanel.add(m_cancelButton, gbc);
@@ -304,26 +306,30 @@ final class OAuthSettingsPanel extends JPanel {
         credentialLocationPanel.add(m_filesystemLocationButton, gbc);
         gbc.gridy++;
 
-        JPanel filesystemFileChooserPanel = createFileSystemFileChooserPanel();
-        credentialLocationPanel.add(filesystemFileChooserPanel, gbc);
+        m_filesystemFileChooserPanel = createFileSystemFileChooserPanel();
+        credentialLocationPanel.add(m_filesystemFileChooserPanel, gbc);
         gbc.gridy++;
 
         m_nodeSettingsLocationButton = createLocationButton(CredentialsLocationType.NODE, m_locationsButtonGroup);
         credentialLocationPanel.add(m_nodeSettingsLocationButton, gbc);
 
         ActionListener updateFileChooserPanelVisibility =
-            a -> filesystemFileChooserPanel.setVisible(m_filesystemLocationButton.isSelected());
+            a -> updateFileChooserVisibility();
         m_memoryLocationButton.addActionListener(updateFileChooserPanelVisibility);
         m_filesystemLocationButton.addActionListener(updateFileChooserPanelVisibility);
         m_nodeSettingsLocationButton.addActionListener(updateFileChooserPanelVisibility);
 
         // Trigger visibility update
-        updateFileChooserPanelVisibility.actionPerformed(null);
+        updateFileChooserVisibility();
 
         // Allow more space for radio buttons to hide scroll bar when the file chooser is shown
         credentialLocationPanel.setPreferredSize(new Dimension(getPreferredSize().width, 200));
 
         return credentialLocationPanel;
+    }
+
+    private void updateFileChooserVisibility() {
+        m_filesystemFileChooserPanel.setVisible(m_filesystemLocationButton.isSelected());
     }
 
     private JPanel createFileSystemFileChooserPanel() {

@@ -44,67 +44,28 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   11.11.2019 (David Kolb, KNIME GmbH, Konstanz, Germany): created
+ *   18.11.2019 (David Kolb, KNIME GmbH, Konstanz, Germany): created
  */
 package org.knime.ext.powerbi.base.nodes.send;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.knime.ext.azuread.auth.AzureADAuthentication;
-
 /**
- * Singleton HashMap to store AzureADAuthentication credentials.
+ * Exception to indicate that a credentials file does not have the right format.
  *
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
-final class InMemoryCredentialStore {
+final class InvalidCredentialsFileFormatException extends Exception {
 
-    private static InMemoryCredentialStore m_instance;
+    private static final long serialVersionUID = 1L;
 
-    private Map<String, AzureADAuthentication> m_dataStore = new HashMap<String, AzureADAuthentication>();
-
-    private InMemoryCredentialStore() {
+    InvalidCredentialsFileFormatException(final String msg) {
+        super(msg);
     }
 
-    /**
-     * Get the single InMemoryCredentialStore instance.
-     *
-     * @return The singleton InMemoryCredentialStore instance.
-     */
-    public static InMemoryCredentialStore getInstance() {
-        if (m_instance == null) {
-            m_instance = new InMemoryCredentialStore();
-        }
-        return m_instance;
+    InvalidCredentialsFileFormatException(final Throwable ex) {
+        super(ex);
     }
 
-    /**
-     * Store the specified AzureADAuthentication with specified key.
-     *
-     * @param key The key to use.
-     * @param value The AzureADAuthentication to store.
-     */
-    public void put(final String key, final AzureADAuthentication value) {
-        m_dataStore.put(key, value);
-    }
-
-    /**
-     * Get the AzureADAuthentication associated with the specified key.
-     *
-     * @param key The key to get the value of.
-     * @return The AzureADAuthentication for the specified key or null if no mapping is available.
-     */
-    public AzureADAuthentication get(final String key) {
-        return m_dataStore.get(key);
-    }
-
-    /**
-     * Remove the AzureADAuthentication with specified key.
-     *
-     * @param key The key to remove the value of.
-     */
-    public void remove(final String key) {
-        m_dataStore.remove(key);
+    InvalidCredentialsFileFormatException(final String msg, final Throwable ex) {
+        super(msg, ex);
     }
 }

@@ -33,7 +33,8 @@
 			dataset.
 			<p />
 			<b>Important:</b>
-			The node saves a refresh token with access to your Microsoft account
+			When choosing the <i>Node</i> credentials storage location,
+			the node saves a refresh token with access to your Microsoft account
 			(with the specified permissions) in the node settings. Before sharing
 			the workflow, you should clear your credentials in the node dialog.
 			<p />
@@ -82,7 +83,7 @@
 				<li>
 					<b>Memory</b>
 					: The authentication credentials will be kept in memory. 
-					They are discarded when exiting KNIME. 
+					They are discarded when closing KNIME. 
 				</li>
 				<li>
 					<b>Local File</b>
@@ -91,7 +92,9 @@
 				</li>
 				<li>
 					<b>Node</b>
-					: The authentication credentials will be saved in the node settings. 
+					: The authentication credentials will be saved in the node settings. If you choose this
+					option, the workflow will contain your authentication information after is has been saved. 
+					Thus, access to your Microsoft account will be available to others if you share the workflow. 
 				</li>
 			</ul>
 			</option>
@@ -99,7 +102,8 @@
 				Deletes the authentication credentials stored at the selected location.
 				If <i>Local File</i> was selected, the file will be deleted if
 				it contains previously stored credentials. Otherwise, the file will be left
-				untouched and an error is displayed.
+				untouched and an error is displayed. If <i>Node</i> was selected, the credentials will
+				be cleared from the node settings <b>not before</b> saving the workflow.
 			</option>
 			<option name="Clear All Credentials">
 				Deletes all stored authentication credentials. Also see description of 

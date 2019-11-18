@@ -124,10 +124,10 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             CredentialsLocationType locationType = m_authPanel.getCredentialsSaveLocation();
             try {
                 m_settings.clearAuthentication(locationType);
-            } catch (IOException | InvalidSettingsException ex) {
+            } catch (InvalidSettingsException ex) {
                 String msg =
                     "Could not clear " + locationType.getShortText() + " credentials. Reason: " + ex.getMessage();
-                LOGGER.warn(msg, ex);
+                LOGGER.error(msg, ex);
             }
         });
 
@@ -135,9 +135,9 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             for (CredentialsLocationType clt : CredentialsLocationType.values()) {
                 try {
                     m_settings.clearAuthentication(clt);
-                } catch (IOException | InvalidSettingsException ex) {
+                } catch (InvalidSettingsException ex) {
                     String msg = "Could not clear " + clt.getShortText() + " credentials. Reason: " + ex.getMessage();
-                    LOGGER.warn(msg, ex);
+                    LOGGER.error(msg, ex);
                 }
             }
         });

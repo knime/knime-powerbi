@@ -54,15 +54,28 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.List;
 import java.util.UUID;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.config.Config;
+import org.knime.core.node.config.base.ConfigBase;
 import org.knime.core.util.FileUtil;
+import org.knime.core.util.crypto.Encrypter;
+import org.knime.core.util.crypto.IEncrypter;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
 
@@ -73,6 +86,8 @@ import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeSettings {
+
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
     private static final String ENCRYPTION_KEY = "9J4jG3m1v2FKmH9C5TffFw";
 
@@ -98,6 +113,8 @@ final class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_NODE_ID = "node_id";
 
+    private static final String CFG_KEY_CREDENTIALS_PERSITED_MARKER = "credentials_persited_marker";
+
     private static final String LOCAL_FILE_ENCODING = "UTF-8";
 
     private static final String POWER_BI_CREDENTIAL_FILE_HEADER = "KNIME PowerBI Credentials";
@@ -117,6 +134,16 @@ final class SendToPowerBINodeSettings {
     private CredentialsLocationType m_credentialsSaveLocation = CredentialsLocationType.MEMORY;
 
     private String m_nodeId = UUID.randomUUID().toString();
+
+    /**
+     * Binary marker to check which credentials location was already used for saving, i.e. we can expect that
+     * credentials are present under the chosen location.
+     *
+     * 1 := MEMORY; 2 := FILESYSTEM; 4 := NODE
+     *
+     * Also see {@link #setMarker(CredentialsLocationType)} and {@link #wasPersited(CredentialsLocationType)}
+     */
+    private int m_credentialsPersitedMarker = 0;
 
     /**
      * Policy how to proceed when output table exists (overwrite, abort, append).
@@ -255,8 +282,8 @@ final class SendToPowerBINodeSettings {
         }
 
         // Check selected location if chosen from radio buttons.
-        if (CredentialsLocationType.fromActionCommand(settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION))
-            .equals(CredentialsLocationType.FILESYSTEM)) {
+        if (CredentialsLocationType.fromActionCommand(
+            settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION)) == CredentialsLocationType.FILESYSTEM) {
             File file = resolveFilesystemLocation(settings.getString(CFG_KEY_FILESYSTEM_LOCATION));
 
             if (file.exists()) {
@@ -290,11 +317,11 @@ final class SendToPowerBINodeSettings {
      * @throws InvalidSettingsException If {@link CredentialsLocationType#FILESYSTEM} and the selected file path can't
      *             be resolved.
      */
-    void clearAuthentication(final CredentialsLocationType locationType) throws IOException, InvalidSettingsException {
+    void clearAuthentication(final CredentialsLocationType locationType) throws InvalidSettingsException {
 
         switch (locationType) {
             case MEMORY:
-                InMemoryCredentialStore.instance().remove(m_nodeId);
+                InMemoryCredentialStore.getInstance().remove(m_nodeId);
                 break;
 
             case FILESYSTEM:
@@ -302,7 +329,11 @@ final class SendToPowerBINodeSettings {
 
                 if (credentialsFile.exists()) {
                     // To make sure not to delete something on accident, only delete if the file has the magic header.
-                    checkCredentialFileHeader(credentialsFile);
+                    try {
+                        checkCredentialFileHeader(credentialsFile);
+                    } catch (InvalidCredentialsFileFormatException ex) {
+                        throw new InvalidSettingsException(ex);
+                    }
 
                     credentialsFile.delete();
                 }
@@ -312,7 +343,7 @@ final class SendToPowerBINodeSettings {
                 break;
 
             default:
-                break;
+                throw new NotImplementedException("Case " + locationType + " not yet implemented.");
         }
 
         setAuthentication(null);
@@ -334,24 +365,32 @@ final class SendToPowerBINodeSettings {
 
         switch (m_credentialsSaveLocation) {
             case MEMORY:
-                InMemoryCredentialStore.instance().put(m_nodeId, getAuthentication());
+                InMemoryCredentialStore.getInstance().put(m_nodeId, getAuthentication());
                 break;
 
             case FILESYSTEM:
                 File credentialsFile = resolveFilesystemLocation(getFilesystemLocation());
-                saveCredentialsToFile(credentialsFile, getAuthentication());
+                try {
+                    saveCredentialsToFile(credentialsFile, getAuthentication());
+                } catch (InvalidCredentialsFileFormatException ex) {
+                    throw new InvalidSettingsException(ex.getMessage(), ex);
+                }
                 break;
 
             case NODE:
                 final Config authConfig = settings.addConfig(CFG_KEY_AUTHENTICATION);
                 authConfig.addPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY, getAuthentication().getAccessToken());
                 authConfig.addPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY,
-                    getAuthentication().getRefreshToken().orElseGet(() -> null));
+                    getAuthentication().getRefreshToken().orElse(null));
                 authConfig.addLong(CFG_KEY_VALID_UNTIL, getAuthentication().getValidUntil());
 
             default:
-                break;
+                throw new NotImplementedException("Case " + m_credentialsSaveLocation + " not yet implemented.");
         }
+
+        // Set marker indicating which location was used for storing
+        setMarker(m_credentialsSaveLocation);
+        settings.addInt(CFG_KEY_CREDENTIALS_PERSITED_MARKER, m_credentialsPersitedMarker);
     }
 
     /**
@@ -363,28 +402,41 @@ final class SendToPowerBINodeSettings {
      *             be resolved.
      */
     private void loadAuthentication(final NodeSettingsRO settings) throws IOException, InvalidSettingsException {
+        m_credentialsPersitedMarker = settings.getInt(CFG_KEY_CREDENTIALS_PERSITED_MARKER, 0);
 
         AzureADAuthentication credentials = null;
 
         switch (m_credentialsSaveLocation) {
             case MEMORY:
-                credentials = InMemoryCredentialStore.instance().get(m_nodeId);
+                credentials = InMemoryCredentialStore.getInstance().get(m_nodeId);
+                if (wasPersited(m_credentialsSaveLocation) && credentials == null) {
+                    throw new IOException(
+                        "Could not load credentials from memory. Maybe KNIME was closed in the meantime?");
+                }
                 break;
 
             case FILESYSTEM:
                 File credentialsFile = resolveFilesystemLocation(getFilesystemLocation());
+
                 try {
-                    credentials = readCredentialsFromFile(credentialsFile);
+                    if (credentialsFile.exists()) {
+                        credentials = readCredentialsFromFile(credentialsFile);
+                    } else if (wasPersited(m_credentialsSaveLocation)) {
+                        throw new IOException("Could not load credentials from selected file: '"
+                            + credentialsFile.toString() + "' File does not exist.");
+                    }
                 } catch (IOException ex) {
                     setAuthentication(null);
                     throw ex;
+                } catch (InvalidCredentialsFileFormatException ex) {
+                    setAuthentication(null);
+                    throw new InvalidSettingsException(ex.getMessage(), ex);
                 }
                 break;
 
             case NODE:
                 if (!settings.containsKey(CFG_KEY_AUTHENTICATION)) {
-                    setAuthentication(null);
-                    return;
+                    break;
                 }
 
                 final Config authConfig = settings.getConfig(CFG_KEY_AUTHENTICATION);
@@ -394,10 +446,51 @@ final class SendToPowerBINodeSettings {
                 credentials = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
 
             default:
-                break;
+                throw new NotImplementedException("Case " + m_credentialsSaveLocation + " not yet implemented.");
         }
 
         setAuthentication(credentials);
+    }
+
+    /**
+     * Convenience function to set the bit corresponding to the specified credentials location.
+     */
+    private void setMarker(final CredentialsLocationType locationType) {
+
+        switch (locationType) {
+
+            case MEMORY:
+                m_credentialsPersitedMarker = m_credentialsPersitedMarker | 1;
+                break;
+            case FILESYSTEM:
+                m_credentialsPersitedMarker = m_credentialsPersitedMarker | 2;
+                break;
+            case NODE:
+                m_credentialsPersitedMarker = m_credentialsPersitedMarker | 4;
+                break;
+
+            default:
+                throw new NotImplementedException("Case " + locationType + " not yet implemented.");
+        }
+    }
+
+    /**
+     * Checks if the bit corresponding to the specified credentials location is set.
+     */
+    private boolean wasPersited(final CredentialsLocationType locationType) {
+        switch (locationType) {
+
+            case MEMORY:
+                return (m_credentialsPersitedMarker & 1) == 1;
+            case FILESYSTEM:
+                return (m_credentialsPersitedMarker & 2) == 2;
+            case NODE:
+                return (m_credentialsPersitedMarker & 4) == 4;
+
+            default:
+                throw new NotImplementedException("Case " + locationType + " not yet implemented.");
+        }
+
     }
 
     /**
@@ -409,17 +502,24 @@ final class SendToPowerBINodeSettings {
      *             {@link #checkCredentialFileHeader(File)}. Or file can't be written.
      */
     private static void saveCredentialsToFile(final File saveLocation, final AzureADAuthentication auth)
-        throws IOException {
+        throws IOException, InvalidCredentialsFileFormatException {
+
+        if (saveLocation.exists()) {
+            checkCredentialFileHeader(saveLocation);
+        }
+
         String authTokens = POWER_BI_CREDENTIAL_FILE_HEADER + "\n";
-        authTokens += auth.getAccessToken() + "\n";
-        authTokens += auth.getRefreshToken().orElseGet(() -> "") + "\n";
+        authTokens += encryptString(ENCRYPTION_KEY, auth.getAccessToken()) + "\n";
+
+        if (auth.getRefreshToken().isPresent()) {
+            authTokens += encryptString(ENCRYPTION_KEY, auth.getRefreshToken().get()) + "\n";
+        } else {
+            authTokens += "\n";
+        }
+
         authTokens += auth.getValidUntil();
 
         try {
-            if (saveLocation.exists()) {
-                checkCredentialFileHeader(saveLocation);
-            }
-
             FileUtils.writeStringToFile(saveLocation, authTokens, LOCAL_FILE_ENCODING);
         } catch (IOException ex) {
             throw new IOException("Can't write to selected credentials file. Reason: " + ex.getMessage(), ex);
@@ -434,21 +534,21 @@ final class SendToPowerBINodeSettings {
      * @throws IOException If the file exists and does not conform expected specification. Also see
      *             {@link #checkCredentialFileHeader(File)}. Or file can't be read.
      */
-    private static AzureADAuthentication readCredentialsFromFile(final File loadLocation) throws IOException {
+    private static AzureADAuthentication readCredentialsFromFile(final File loadLocation)
+        throws IOException, InvalidCredentialsFileFormatException {
         AzureADAuthentication auth = null;
         try {
-            if (!loadLocation.exists()) {
-                return null;
-            }
-
             checkCredentialFileHeader(loadLocation);
 
             List<String> lines = FileUtils.readLines(loadLocation, LOCAL_FILE_ENCODING);
-            final String accessToken = lines.get(1);
+            final String accessToken = decryptString(ENCRYPTION_KEY, lines.get(1));
             String refreshToken = lines.get(2);
             if (refreshToken.isEmpty()) {
                 refreshToken = null;
+            } else {
+                refreshToken = decryptString(ENCRYPTION_KEY, refreshToken);
             }
+
             final long validUntil = Long.parseLong(lines.get(3));
 
             auth = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
@@ -462,18 +562,22 @@ final class SendToPowerBINodeSettings {
      * Checks specified file for {@link #POWER_BI_CREDENTIAL_FILE_HEADER}.
      *
      * @param filesystemLocation The file to check.
-     * @throws IOException If file can't be read or doesn't contain the header in its first line.
+     * @throws InvalidCredentialsFileFormatException If file can't be read or doesn't contain the header in its first
+     *             line.
      */
-    private static void checkCredentialFileHeader(final File filesystemLocation) throws IOException {
-        String firstLine = "";
+    private static void checkCredentialFileHeader(final File filesystemLocation)
+        throws InvalidCredentialsFileFormatException {
         try {
-            firstLine = Files.lines(filesystemLocation.toPath()).findFirst().get();
-        } catch (Exception ex) {
-            throw new IOException("Selected file seems not to be a valid KNIME PowerBI credentials file.", ex);
-        }
+            String firstLine = Files.lines(filesystemLocation.toPath()).findFirst().orElse("");
 
-        if (!firstLine.equals(POWER_BI_CREDENTIAL_FILE_HEADER)) {
-            throw new IOException("Selected file seems not to be a valid KNIME PowerBI credentials file.");
+            if (!firstLine.equals(POWER_BI_CREDENTIAL_FILE_HEADER)) {
+
+                throw new InvalidCredentialsFileFormatException(
+                    "Selected file seems not to be a valid KNIME PowerBI credentials file.");
+            }
+        } catch (Exception ex) {
+            throw new InvalidCredentialsFileFormatException(
+                "Selected file seems not to be a valid KNIME PowerBI credentials file.", ex);
         }
     }
 
@@ -498,5 +602,36 @@ final class SendToPowerBINodeSettings {
             throw new InvalidSettingsException("Not a valid local file path: '" + filesystemLocation + "'.", e);
         }
         return new File(resolvedPath.toUri());
+    }
+
+    /**
+     * Encryption functionality copied and adapted from {@link ConfigBase#addPassword(String, String, String)} and
+     * {@link ConfigBase#getPassword(String, String, String)}.
+     **/
+
+    private static String encryptString(final String encryptionKey, final String value) {
+        try {
+            return createEncrypter(encryptionKey).encrypt(value, value == null ? 0 : value.length());
+        } catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException
+                | InvalidAlgorithmParameterException ex) {
+            throw new RuntimeException("Error while encrypting password: " + ex.getMessage(), ex);
+        }
+    }
+
+    private static String decryptString(final String encryptionKey, final String value) {
+        try {
+            return createEncrypter(encryptionKey).decrypt(value);
+        } catch (InvalidKeyException | BadPaddingException | IllegalBlockSizeException
+                | InvalidAlgorithmParameterException | IOException ex) {
+            throw new RuntimeException("Error while decrypting password: " + ex.getMessage(), ex);
+        }
+    }
+
+    private static IEncrypter createEncrypter(final String key) {
+        try {
+            return new Encrypter(key);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeySpecException ex) {
+            throw new RuntimeException("Could not create encrypter: " + ex.getMessage(), ex);
+        }
     }
 }
