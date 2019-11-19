@@ -383,6 +383,7 @@ final class SendToPowerBINodeSettings {
                 authConfig.addPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY,
                     getAuthentication().getRefreshToken().orElse(null));
                 authConfig.addLong(CFG_KEY_VALID_UNTIL, getAuthentication().getValidUntil());
+                break;
 
             default:
                 throw new NotImplementedException("Case " + m_credentialsSaveLocation + " not yet implemented.");
@@ -444,6 +445,7 @@ final class SendToPowerBINodeSettings {
                 final String refreshToken = authConfig.getPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY);
                 final long validUntil = authConfig.getLong(CFG_KEY_VALID_UNTIL);
                 credentials = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
+                break;
 
             default:
                 throw new NotImplementedException("Case " + m_credentialsSaveLocation + " not yet implemented.");
