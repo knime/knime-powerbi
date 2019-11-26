@@ -83,8 +83,6 @@ import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseExcept
 import org.knime.ext.powerbi.core.rest.bindings.Column;
 import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
-import org.knime.ext.powerbi.core.rest.bindings.Group;
-import org.knime.ext.powerbi.core.rest.bindings.Groups;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
 
@@ -177,11 +175,10 @@ final class SendToPowerBINodeModel extends NodeModel {
         // Get the settings
         final String tableName = m_settings.getTableName();
         final String datasetName = m_settings.getDatasetName();
-        final String workspace = m_settings.getWorkspace();
+        final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();
         final OverwritePolicy overwritePolicy = m_settings.getOverwritePolicy();
 
         // Get the workspace id (can be null)
-        final String workspaceId = getWorkspaceId(auth, workspace);
 
         // Check if the dataset already exists and get its id
         final Dataset dataset = getDataset(auth, workspaceId, datasetName);
@@ -277,22 +274,6 @@ final class SendToPowerBINodeModel extends NodeModel {
             }
         }
         return null;
-    }
-
-    /** Get the id of the workspace if it is not empty. If it does not exist an InvalidSettingsException is thrown. */
-    private static String getWorkspaceId(final AzureADAuthentication auth, final String workspace)
-        throws PowerBIResponseException, InvalidSettingsException {
-        if (workspace == null || workspace.trim().isEmpty()) {
-            return null;
-        }
-        // Find the workspace/group
-        final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
-        for (final Group g : groups.getValue()) {
-            if (workspace.equals(g.getName())) {
-                return g.getId();
-            }
-        }
-        throw new InvalidSettingsException("The workspace with the name \"" + workspace + "\" does not exist.");
     }
 
     /** Creates a Power BI table definition given a KNIME DataTableSpec and a name */

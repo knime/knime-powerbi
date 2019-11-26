@@ -53,11 +53,18 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -71,8 +78,14 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
+import org.knime.core.util.SwingWorkerWithContext;
+import org.knime.ext.azuread.auth.Authenticator.AuthenticatorState;
+import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.AzureADAuthenticator;
 import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.OverwritePolicy;
+import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
+import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
+import org.knime.ext.powerbi.core.rest.bindings.Groups;
 
 /**
  * Dialog for the Send to Power BI node.
@@ -81,6 +94,11 @@ import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.Overwrite
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeDialog extends NodeDialogPane {
+
+    private static final PowerBIWorkspace WORKSPACE_PLACEHOLDER =
+        new PowerBIWorkspace("Authenticate to select workspace", "no_identifier");
+
+    private static final PowerBIWorkspace DEFAULT_WORKSPACE = new PowerBIWorkspace("default", "");
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
@@ -92,7 +110,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JTextField m_tableName;
 
-    private JTextField m_workspace;
+    private JComboBox<PowerBIWorkspace> m_workspace;
 
     private JRadioButton m_overwriteButton;
 
@@ -105,6 +123,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     public SendToPowerBINodeDialog() {
         m_settings = new SendToPowerBINodeSettings();
         m_authenticator = new AzureADAuthenticator(SendToPowerBINodeModel.OAUTH_POWERBI_SCOPE);
+        m_authenticator.addListener(this::authenticationChanged);
         m_authPanel = new OAuthSettingsPanel(m_authenticator);
         addTab("Options", createOptionsPanel());
     }
@@ -163,7 +182,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         panel.add(new JLabel("Workspace"), gbc);
         gbc.gridx++;
         gbc.weightx = 3;
-        m_workspace = new JTextField("");
+        m_workspace = new JComboBox<>(new PowerBIWorkspace[]{WORKSPACE_PLACEHOLDER});
+        m_workspace.setEnabled(false);
         panel.add(m_workspace, gbc);
 
         gbc.gridy++;
@@ -230,7 +250,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) throws InvalidSettingsException {
         m_settings.setAuthentication(m_authenticator.getAuthentication());
-        m_settings.setWorkspace(m_workspace.getText());
+        m_settings.setWorkspace(((PowerBIWorkspace)m_workspace.getSelectedItem()).getIdentifier());
         m_settings.setDatasetName(m_datasetName.getText());
         m_settings.setTableName(m_tableName.getText());
         final OverwritePolicy overwritePolicy;
@@ -269,7 +289,14 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_authPanel.setFilesystemLocation(m_settings.getFilesystemLocation());
 
         m_authenticator.setAuthentication(m_settings.getAuthentication());
-        m_workspace.setText(m_settings.getWorkspace());
+        final String workspaceId = m_settings.getWorkspace();
+        if (workspaceId.isEmpty()) {
+            m_workspace.setSelectedItem(DEFAULT_WORKSPACE);
+        } else {
+            final PowerBIWorkspace selectedWorkspace = new PowerBIWorkspace(workspaceId, workspaceId);
+            m_workspace.addItem(selectedWorkspace);
+            m_workspace.setSelectedItem(selectedWorkspace);
+        }
         m_datasetName.setText(m_settings.getDatasetName());
         m_tableName.setText(m_settings.getTableName());
         switch (m_settings.getOverwritePolicy()) {
@@ -288,6 +315,58 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
     }
 
+    private void authenticationChanged(final AuthenticatorState s) {
+        if (AuthenticatorState.AUTHENTICATED.equals(s)) {
+            updateWorkspaceOptions();
+        }
+    }
+
+    private void updateWorkspaceOptions() {
+        new SwingWorkerWithContext<List<PowerBIWorkspace>, Void>() {
+
+            @Override
+            protected List<PowerBIWorkspace> doInBackgroundWithContext() throws Exception {
+                final AzureADAuthentication auth = m_authenticator.getAuthentication();
+                return getAvailableWorkspaces(auth);
+            }
+
+            @Override
+            protected void doneWithContext() {
+                try {
+                    setWorkspaceOptions(get());
+                } catch (final InterruptedException | ExecutionException e) {
+                    LOGGER.warn("Updating the available workspaces failed.", e);
+                }
+            }
+        }.execute();
+    }
+
+    private void setWorkspaceOptions(final List<PowerBIWorkspace> workspaceNames) {
+        // Get the selected value (or default)
+        PowerBIWorkspace selected = (PowerBIWorkspace)m_workspace.getSelectedItem();
+        if (!workspaceNames.contains(selected)) {
+            selected = DEFAULT_WORKSPACE;
+        }
+
+        // Update the options and reselect
+        m_workspace.removeAllItems();
+        for (final PowerBIWorkspace w : workspaceNames) {
+            m_workspace.addItem(w);
+        }
+        m_workspace.setSelectedItem(selected);
+        m_workspace.setEnabled(true);
+    }
+
+    private static List<PowerBIWorkspace> getAvailableWorkspaces(final AzureADAuthentication auth)
+        throws PowerBIResponseException {
+        final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
+        final List<PowerBIWorkspace> workspaces = Arrays.stream(groups.getValue()) //
+            .map(g -> new PowerBIWorkspace(g.getName(), g.getId())) //
+            .collect(Collectors.toCollection(ArrayList::new));
+        workspaces.add(DEFAULT_WORKSPACE);
+        return workspaces;
+    }
+
     private static GridBagConstraints createGBC() {
         final GridBagConstraints gbc = new GridBagConstraints();
         gbc.anchor = GridBagConstraints.LINE_START;
@@ -302,5 +381,40 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private static TitledBorder createTitledBorder(final String title) {
         return BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), title);
+    }
+
+    private static class PowerBIWorkspace {
+
+        private final String m_name;
+
+        private final String m_identifier;
+
+        public PowerBIWorkspace(final String name, final String identifier) {
+            m_name = name;
+            m_identifier = identifier;
+        }
+
+        @Override
+        public boolean equals(final Object obj) {
+            if (!(obj instanceof PowerBIWorkspace)) {
+                return false;
+            }
+            final PowerBIWorkspace o = (PowerBIWorkspace)obj;
+            return m_identifier.equals(o.m_identifier);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(m_identifier);
+        }
+
+        @Override
+        public String toString() {
+            return m_name;
+        }
+
+        public String getIdentifier() {
+            return m_identifier;
+        }
     }
 }

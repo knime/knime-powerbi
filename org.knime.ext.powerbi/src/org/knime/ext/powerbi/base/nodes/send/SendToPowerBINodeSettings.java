@@ -299,13 +299,13 @@ final class SendToPowerBINodeSettings {
         setFilesystemLocation(settings.getString(CFG_KEY_FILESYSTEM_LOCATION));
         setCredentialsSaveLocation(
             CredentialsLocationType.fromActionCommand(settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION)));
-
-        loadAuthentication(settings);
-
         setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
         setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
         setTableName(settings.getString(CFG_KEY_TABLE_NAME));
         setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));
+
+        // Load the authentication last (in case it fails)
+        loadAuthentication(settings);
     }
 
     /**
