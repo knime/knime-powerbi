@@ -58,7 +58,9 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.crypto.BadPaddingException;
@@ -68,7 +70,6 @@ import javax.crypto.NoSuchPaddingException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.knime.core.node.InvalidSettingsException;
-import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.config.Config;
@@ -87,8 +88,6 @@ import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
  */
 final class SendToPowerBINodeSettings {
 
-    private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
-
     private static final String ENCRYPTION_KEY = "9J4jG3m1v2FKmH9C5TffFw";
 
     private static final String CFG_KEY_AUTHENTICATION = "authentication";
@@ -103,9 +102,11 @@ final class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_DATASET_NAME = "dataset_name";
 
-    private static final String CFG_KEY_TABLE_NAME = "table_name";
+    private static final String CFG_KEY_TABLE_NAMES = "table_name";
 
-    private static final String CFG_KEY_OVERWRITE_POLICY = "overwrite_policy";
+    private static final String CFG_KEY_CREATE_NEW_DATASET = "create_new_dataset";
+
+    private static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
 
     private static final String CFG_KEY_FILESYSTEM_LOCATION = "filesystem_location";
 
@@ -125,9 +126,11 @@ final class SendToPowerBINodeSettings {
 
     private String m_datasetName = "";
 
-    private String m_tableName = "";
+    private String[] m_tableNames = {""};
 
-    private OverwritePolicy m_overwritePolicy = OverwritePolicy.ABORT;
+    private boolean m_createNewDataset = true;
+
+    private boolean m_allowOverwrite = false;
 
     private String m_filesystemLocation = "";
 
@@ -144,18 +147,6 @@ final class SendToPowerBINodeSettings {
      * Also see {@link #setMarker(CredentialsLocationType)} and {@link #wasPersited(CredentialsLocationType)}
      */
     private int m_credentialsPersitedMarker = 0;
-
-    /**
-     * Policy how to proceed when output table exists (overwrite, abort, append).
-     */
-    enum OverwritePolicy {
-            /** Fail during configure/execute. */
-            ABORT,
-            /** Overwrite existing file. */
-            OVERWRITE,
-            /** Append to existing file. */
-            APPEND
-    }
 
     /**
      * @return the authentication
@@ -200,31 +191,45 @@ final class SendToPowerBINodeSettings {
     }
 
     /**
-     * @return the tableName
+     * @return the tableNames
      */
-    String getTableName() {
-        return m_tableName;
+    String[] getTableNames() {
+        return m_tableNames;
     }
 
     /**
-     * @param tableName the tableName to set
+     * @param tableNames the tableNames to set
      */
-    void setTableName(final String tableName) {
-        m_tableName = tableName;
+    void setTableNames(final String[] tableNames) {
+        m_tableNames = tableNames;
     }
 
     /**
-     * @return the overwritePolicy
+     * @return the createNewDataset
      */
-    OverwritePolicy getOverwritePolicy() {
-        return m_overwritePolicy;
+    boolean isCreateNewDataset() {
+        return m_createNewDataset;
     }
 
     /**
-     * @param overwritePolicy the overwritePolicy to set
+     * @param createNewDataset the createNewDataset to set
      */
-    void setOverwritePolicy(final OverwritePolicy overwritePolicy) {
-        m_overwritePolicy = overwritePolicy;
+    void setCreateNewDataset(final boolean createNewDataset) {
+        m_createNewDataset = createNewDataset;
+    }
+
+    /**
+     * @return the allowOverwrite
+     */
+    boolean isAllowOverwrite() {
+        return m_allowOverwrite;
+    }
+
+    /**
+     * @param allowOverwrite the allowOverwrite to set
+     */
+    void setAllowOverwrite(final boolean allowOverwrite) {
+        m_allowOverwrite = allowOverwrite;
     }
 
     /**
@@ -258,8 +263,9 @@ final class SendToPowerBINodeSettings {
     void saveSettingsTo(final NodeSettingsWO settings) throws IOException, InvalidSettingsException {
         settings.addString(CFG_KEY_WORKSPACE, getWorkspace());
         settings.addString(CFG_KEY_DATASET_NAME, getDatasetName());
-        settings.addString(CFG_KEY_TABLE_NAME, getTableName());
-        settings.addString(CFG_KEY_OVERWRITE_POLICY, getOverwritePolicy().name());
+        settings.addStringArray(CFG_KEY_TABLE_NAMES, getTableNames());
+        settings.addBoolean(CFG_KEY_CREATE_NEW_DATASET, m_createNewDataset);
+        settings.addBoolean(CFG_KEY_ALLOW_OVERWRITE, m_allowOverwrite);
 
         settings.addString(CFG_KEY_NODE_ID, m_nodeId);
         settings.addString(CFG_KEY_FILESYSTEM_LOCATION, getFilesystemLocation());
@@ -268,28 +274,29 @@ final class SendToPowerBINodeSettings {
         saveAuthentication(settings);
     }
 
-    static void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
+    static void validateSettings(final int numberOfInputs, final NodeSettingsRO settings)
+        throws InvalidSettingsException {
         // Note that the workspace config can be empty
         settings.getString(CFG_KEY_WORKSPACE);
+
+        // Check the dataset name
         final String datasetName = settings.getString(CFG_KEY_DATASET_NAME);
-        final String tableName = settings.getString(CFG_KEY_TABLE_NAME);
-        OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY));
-        if (datasetName == null || datasetName.trim().isEmpty()) {
+        if (datasetName == null || datasetName.trim().isEmpty()
+            || datasetName.equals(SendToPowerBINodeDialog.DATASET_PLACEHOLDER)) {
             throw new InvalidSettingsException("The dataset name must be set.");
         }
-        if (tableName == null || tableName.trim().isEmpty()) {
-            throw new InvalidSettingsException("The table name must be set.");
-        }
+
+        // Check the table names
+        final String[] tableNames = settings.getStringArray(CFG_KEY_TABLE_NAMES);
+        checkTableNamesValid(numberOfInputs, tableNames);
 
         // Check selected location if chosen from radio buttons.
         if (CredentialsLocationType.fromActionCommand(
             settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION)) == CredentialsLocationType.FILESYSTEM) {
             File file = resolveFilesystemLocation(settings.getString(CFG_KEY_FILESYSTEM_LOCATION));
 
-            if (file.exists()) {
-                if (!file.isFile()) {
-                    throw new InvalidSettingsException("Selected credetials storage location must be a file.");
-                }
+            if (file.exists() && !file.isFile()) {
+                throw new InvalidSettingsException("Selected credetials storage location must be a file.");
             }
         }
     }
@@ -301,8 +308,10 @@ final class SendToPowerBINodeSettings {
             CredentialsLocationType.fromActionCommand(settings.getString(CFG_KEY_CREDENTIALS_SAVE_LOCATION)));
         setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
         setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
-        setTableName(settings.getString(CFG_KEY_TABLE_NAME));
-        setOverwritePolicy(OverwritePolicy.valueOf(settings.getString(CFG_KEY_OVERWRITE_POLICY)));
+        setTableNames(settings.getStringArray(CFG_KEY_TABLE_NAMES));
+
+        setCreateNewDataset(settings.getBoolean(CFG_KEY_CREATE_NEW_DATASET));
+        setAllowOverwrite(settings.getBoolean(CFG_KEY_ALLOW_OVERWRITE));
 
         // Load the authentication last (in case it fails)
         loadAuthentication(settings);
@@ -634,6 +643,34 @@ final class SendToPowerBINodeSettings {
             return new Encrypter(key);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeySpecException ex) {
             throw new RuntimeException("Could not create encrypter: " + ex.getMessage(), ex);
+        }
+    }
+
+    /** Checks that no table name are valid. All set and none twice. */
+    private static void checkTableNamesValid(final int numberOfInputs, final String[] tableNames)
+        throws InvalidSettingsException {
+        // Check that there are enough table names
+        if (numberOfInputs > tableNames.length) {
+            throw new InvalidSettingsException("Please reconfigure the node and provide all table names.");
+        }
+
+        // Loop over names and check
+        final Set<String> allNames = new HashSet<>();
+        for (int i = 0; i < numberOfInputs; i++) {
+            if (tableNames[i] == null || tableNames[i].trim().isEmpty()
+                || tableNames[i].equals(SendToPowerBINodeDialog.TABLE_PLACEHOLDER)) {
+                if (i == 0 && numberOfInputs == 1) {
+                    throw new InvalidSettingsException("Table name must not be empty.");
+                } else {
+                    throw new InvalidSettingsException("Table name for table " + (i + 1) + " must not be empty.");
+                }
+            }
+            allNames.add(tableNames[i]);
+        }
+
+        // Check if none of them are equal
+        if (allNames.size() != numberOfInputs) {
+            throw new InvalidSettingsException("Please use unique table names for each table.");
         }
     }
 }

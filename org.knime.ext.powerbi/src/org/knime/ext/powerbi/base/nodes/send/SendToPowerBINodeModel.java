@@ -76,7 +76,6 @@ import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.ext.azuread.auth.DefaultOAuth20Scope;
 import org.knime.ext.azuread.auth.OAuth20Scope;
-import org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeSettings.OverwritePolicy;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
@@ -173,10 +172,12 @@ final class SendToPowerBINodeModel extends NodeModel {
         execPrepare.setMessage("Checking for exisiting datasets");
 
         // Get the settings
-        final String tableName = m_settings.getTableName();
+        // TODO handle multiple tables
+        final String tableName = m_settings.getTableNames()[0];
         final String datasetName = m_settings.getDatasetName();
         final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();
-        final OverwritePolicy overwritePolicy = m_settings.getOverwritePolicy();
+        final boolean createNewDataset = m_settings.isCreateNewDataset();
+        final boolean allowOverwrite = m_settings.isAllowOverwrite();
 
         // Get the workspace id (can be null)
 
@@ -184,34 +185,32 @@ final class SendToPowerBINodeModel extends NodeModel {
         final Dataset dataset = getDataset(auth, workspaceId, datasetName);
         String datasetId = dataset == null ? null : dataset.getId();
 
-        if (dataset != null) {
-
-            switch (overwritePolicy) {
-                case ABORT:
-                    throw new InvalidSettingsException(
-                        "The dataset with the name \"" + datasetName + "\" already exists.");
-
-                case OVERWRITE:
-                    PowerBIRestAPIUtils.deleteDataset(auth, workspaceId, datasetId);
-                    datasetId = null;
-                    break;
-
-                case APPEND:
-                    if (!dataset.isAddRowsAPIEnabled()) {
-                        throw new InvalidSettingsException("The dataset with the name \"" + datasetName
-                            + "\" already exists and does not support adding rows.");
-                    }
-                    final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
-                    final Table table = getTableWithName(tables, tableName);
-                    if (table == null) {
-                        throw new InvalidSettingsException("The dataset with the name \"" + datasetName
-                            + "\" already exists but has no table with the name \"" + tableName + "\".");
-                    }
-                    break;
-
-                default:
-                    // Cannot happen
-                    break;
+        if (createNewDataset && dataset != null) {
+            if (allowOverwrite) {
+                // Delete the dataset
+                PowerBIRestAPIUtils.deleteDataset(auth, workspaceId, datasetId);
+                datasetId = null;
+            } else {
+                // Fail because the dataset exists
+                throw new InvalidSettingsException("The dataset with the name \"" + datasetName + "\" already exists.");
+            }
+        } else if (!createNewDataset) {
+            if (dataset == null) {
+                // Fail because the dataset does not exist
+                throw new InvalidSettingsException(
+                    "The selected dataset with the name \"" + datasetName + "\" does not exist anymore.");
+            } else {
+                // Check if the dataset works for appending
+                if (!dataset.isAddRowsAPIEnabled()) {
+                    throw new InvalidSettingsException("The dataset with the name \"" + datasetName
+                        + "\" already exists and does not support adding rows.");
+                }
+                final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
+                final Table table = getTableWithName(tables, tableName);
+                if (table == null) {
+                    throw new InvalidSettingsException("The dataset with the name \"" + datasetName
+                        + "\" exists but has no table with the name \"" + tableName + "\".");
+                }
             }
         }
 
@@ -310,12 +309,14 @@ final class SendToPowerBINodeModel extends NodeModel {
             }
         }
         if (hasIncompatibleColumns) {
-            LOGGER.warn("The table contains " + incompatibleColumns.size() + " incompatible columns which will be ignored. "
-                + "See node description for the list of supported datatypes.");
+            LOGGER.warn(
+                "The table contains " + incompatibleColumns.size() + " incompatible columns which will be ignored. "
+                    + "See node description for the list of supported datatypes.");
             String message = "Incompatible columns: ";
             message += ConvenienceMethods.getShortStringFrom(incompatibleColumns, 4);
             setWarningMessage(message);
         }
+
         return columns;
     }
 
@@ -330,7 +331,7 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        SendToPowerBINodeSettings.validateSettings(settings);
+        SendToPowerBINodeSettings.validateSettings(1, settings);
     }
 
     @Override
