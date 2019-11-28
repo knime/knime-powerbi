@@ -453,7 +453,7 @@ final class SendToPowerBINodeSettings {
                 final String accessToken = authConfig.getPassword(CFG_KEY_ACCESS_TOKEN, ENCRYPTION_KEY);
                 final String refreshToken = authConfig.getPassword(CFG_KEY_REFRESH_TOKEN, ENCRYPTION_KEY);
                 final long validUntil = authConfig.getLong(CFG_KEY_VALID_UNTIL);
-                credentials = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
+                credentials = new DefaultAzureADAuthentication(accessToken, validUntil, refreshToken);
                 break;
 
             default:
@@ -562,7 +562,7 @@ final class SendToPowerBINodeSettings {
 
             final long validUntil = Long.parseLong(lines.get(3));
 
-            auth = new DefaultAzureADAuthentication(accessToken, refreshToken, validUntil);
+            auth = new DefaultAzureADAuthentication(accessToken, validUntil, refreshToken);
         } catch (IOException ex) {
             throw new IOException("Can't read from selected credentials file. Reason: " + ex.getMessage(), ex);
         }

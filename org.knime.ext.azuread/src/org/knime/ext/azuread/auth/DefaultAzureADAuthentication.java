@@ -58,23 +58,23 @@ import java.util.Optional;
  */
 public final class DefaultAzureADAuthentication implements AzureADAuthentication {
 
-    private final String m_accessToken;
+    private String m_accessToken;
+
+    private long m_validUntil;
 
     private final Optional<String> m_refreshToken;
-
-    private final long m_validUntil;
 
     /**
      * Create a new default {@link AzureADAuthentication} with the given tokens.
      *
      * @param accessToken the access token
-     * @param refreshToken the refresh token. Can be <code>null</code>.
      * @param validUntil the date until the access token is valid (in milliseconds from 1. January 1970)
+     * @param refreshToken the refresh token. Can be <code>null</code>.
      */
-    public DefaultAzureADAuthentication(final String accessToken, final String refreshToken, final long validUntil) {
+    public DefaultAzureADAuthentication(final String accessToken, final long validUntil, final String refreshToken) {
         m_accessToken = accessToken;
-        m_refreshToken = Optional.ofNullable(refreshToken);
         m_validUntil = validUntil;
+        m_refreshToken = Optional.ofNullable(refreshToken);
     }
 
     @Override
@@ -83,12 +83,18 @@ public final class DefaultAzureADAuthentication implements AzureADAuthentication
     }
 
     @Override
+    public long getValidUntil() {
+        return m_validUntil;
+    }
+
+    @Override
     public Optional<String> getRefreshToken() {
         return m_refreshToken;
     }
 
     @Override
-    public long getValidUntil() {
-        return m_validUntil;
+    public void updateAccessToken(final String accessToken, final long validUntil) {
+        m_accessToken = accessToken;
+        m_validUntil = validUntil;
     }
 }

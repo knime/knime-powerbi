@@ -65,6 +65,13 @@ public interface AzureADAuthentication {
     String getAccessToken();
 
     /**
+     * Returns the time up until the access token is valid in milliseconds from 1. January 1970.
+     *
+     * @return the time up until the access token is valid
+     */
+    long getValidUntil();
+
+    /**
      * Returns the refresh token if available.
      *
      * @return the refresh token if available
@@ -72,9 +79,10 @@ public interface AzureADAuthentication {
     Optional<String> getRefreshToken();
 
     /**
-     * Returns the time up until the access token is valid in milliseconds from 1. January 1970.
+     * Updates the saved access token when it is refreshed.
      *
-     * @return the time up until the access token is valid
+     * @param accessToken the new access token
+     * @param validUntil the time until the access token is valid
      */
-    long getValidUntil();
+    void updateAccessToken(String accessToken, long validUntil);
 }

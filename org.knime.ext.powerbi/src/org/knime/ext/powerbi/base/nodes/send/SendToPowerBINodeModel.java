@@ -50,7 +50,6 @@ package org.knime.ext.powerbi.base.nodes.send;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,8 +75,6 @@ import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.util.ConvenienceMethods;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
-import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
-import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.ext.azuread.auth.DefaultOAuth20Scope;
 import org.knime.ext.azuread.auth.OAuth20Scope;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
@@ -150,30 +147,13 @@ final class SendToPowerBINodeModel extends NodeModel {
     protected BufferedDataTable[] execute(final BufferedDataTable[] inData, final ExecutionContext exec)
         throws Exception {
         final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
-        execPrepare.setMessage("Authenticating with Microsoft Power BI");
 
         // TODO make sure to keep this in mind:
         // https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
-        /*
-         * Refresh the access token
-         * Note: This is not best practice but works for us now. In future versions we should only request a new
-         * access token if the old one is not valid anymore and check this for every API call
-         */
-        final AzureADAuthentication auth;
-        try {
-            auth = AzureADAuthenticationUtils.refreshToken(m_settings.getAuthentication());
-        } catch (final AuthenticationException e) {
-            // If the host is unknown it's most likely because the user has no internet (but maybe Microsoft is down)
-            if (e.getCause() instanceof UnknownHostException) {
-                throw new IllegalStateException(
-                    "Cannot connect to Microsoft. Please make sure to have an active internet connection.", e);
-            }
-            throw e;
-        }
-
         execPrepare.setMessage("Checking for exisiting datasets");
 
         // Get the settings
+        final AzureADAuthentication auth = m_settings.getAuthentication();
         final String[] tableNames = m_settings.getTableNames();
         final String datasetName = m_settings.getDatasetName();
         final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();

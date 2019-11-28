@@ -136,7 +136,7 @@ public class AzureADAuthenticationUtils {
 
                         // Set the future result
                         authFuture.setResult(new DefaultAzureADAuthentication(accessToken.getAccessToken(),
-                            accessToken.getRefreshToken(), requestTime + accessToken.getExpiresIn() * 1000));
+                            requestTime + accessToken.getExpiresIn() * 1000, accessToken.getRefreshToken()));
 
                         return OAUTH_SUCCESS_PAGE;
                     } else {
@@ -239,10 +239,10 @@ public class AzureADAuthenticationUtils {
 
     /**
      * Refresh the given authentication by requesting a new access token using the refresh token. This method blocks
-     * until the token has been refreshed.
+     * until the token has been refreshed. Note that the <code>auth</code> parameter is edited.
      *
-     * @param auth the authentication
-     * @return the refreshed authentication
+     * @param auth the authentication (which will be refreshed)
+     * @return the refreshed authentication (same as <code>auth</code>)
      * @throws AuthenticationException if the authentication fails because of any reason
      * @throws InterruptedException if the authentication gets interrupted
      */
@@ -259,8 +259,8 @@ public class AzureADAuthenticationUtils {
             // Request the new access token
             final long requestTime = System.currentTimeMillis();
             final OAuth2AccessToken updatedAuth = service.refreshAccessToken(refreshToken.get());
-            return new DefaultAzureADAuthentication(updatedAuth.getAccessToken(), updatedAuth.getRefreshToken(),
-                requestTime + updatedAuth.getExpiresIn() * 1000l);
+            auth.updateAccessToken(updatedAuth.getAccessToken(), requestTime + updatedAuth.getExpiresIn() * 1000l);
+            return auth;
         } catch (final IOException | ExecutionException e) {
             // Re-throw the exception
             throw new AuthenticationException(e.getMessage(), e);
