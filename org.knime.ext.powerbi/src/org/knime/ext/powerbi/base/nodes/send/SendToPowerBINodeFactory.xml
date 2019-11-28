@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <knimeNode icon="./send_to_power_bi.png" type="Sink"
-	xmlns="http://knime.org/node/v2.8"
+	xmlns="http://knime.org/node/v4.1"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://knime.org/node/v2.8 http://knime.org/node/v2.8.xsd">
+	xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
 	<name>Send to Power BI</name>
 	<shortDescription>Send a table to Microsoft Power BI.</shortDescription>
 	<fullDescription>
@@ -149,5 +149,8 @@
 		<inPort index="0" name="Table">
 			Data to be send to Power BI.
 		</inPort>
-	</ports>
+		<dynInPort insert-before="1" group-identifier="input" name="Additional input table">
+			Additional data to be send to your data set.
+		</dynInPort>
+ </ports>
 </knimeNode>

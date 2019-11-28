@@ -48,20 +48,37 @@
  */
 package org.knime.ext.powerbi.base.nodes.send;
 
+import java.util.Optional;
+
+import org.knime.core.node.BufferedDataTable;
+import org.knime.core.node.ConfigurableNodeFactory;
 import org.knime.core.node.NodeDialogPane;
-import org.knime.core.node.NodeFactory;
 import org.knime.core.node.NodeView;
+import org.knime.core.node.context.NodeCreationConfiguration;
+import org.knime.core.node.port.PortType;
 
 /**
  * Send to Power BI factory.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  */
-public final class SendToPowerBINodeFactory extends NodeFactory<SendToPowerBINodeModel> {
+public final class SendToPowerBINodeFactory extends ConfigurableNodeFactory<SendToPowerBINodeModel> {
 
     @Override
-    public SendToPowerBINodeModel createNodeModel() {
-        return new SendToPowerBINodeModel();
+    protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
+        final PortsConfigurationBuilder b = new PortsConfigurationBuilder();
+        b.addExtendableInputPortGroup("input", new PortType[]{BufferedDataTable.TYPE}, BufferedDataTable.TYPE);
+        return Optional.of(b);
+    }
+
+    @Override
+    protected SendToPowerBINodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
+        return new SendToPowerBINodeModel(creationConfig.getPortConfig().get());
+    }
+
+    @Override
+    protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
+        return new SendToPowerBINodeDialog(creationConfig.getPortConfig().get().getInputPorts().length);
     }
 
     @Override
@@ -78,10 +95,5 @@ public final class SendToPowerBINodeFactory extends NodeFactory<SendToPowerBINod
     @Override
     protected boolean hasDialog() {
         return true;
-    }
-
-    @Override
-    protected NodeDialogPane createNodeDialogPane() {
-        return new SendToPowerBINodeDialog();
     }
 }

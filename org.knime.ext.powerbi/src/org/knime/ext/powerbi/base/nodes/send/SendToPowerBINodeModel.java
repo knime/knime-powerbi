@@ -52,11 +52,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataRow;
@@ -70,6 +73,7 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.util.ConvenienceMethods;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
@@ -110,10 +114,13 @@ final class SendToPowerBINodeModel extends NodeModel {
         "https://analysis.windows.net/powerbi/api/Workspace.Read.All" // Required to get the workspaces
     );
 
+    private final int m_numberInputs;
+
     private final SendToPowerBINodeSettings m_settings;
 
-    SendToPowerBINodeModel() {
-        super(1, 0);
+    SendToPowerBINodeModel(final PortsConfiguration portsConfiguration) {
+        super(portsConfiguration.getInputPorts(), portsConfiguration.getOutputPorts());
+        m_numberInputs = portsConfiguration.getInputPorts().length;
         m_settings = new SendToPowerBINodeSettings();
     }
 
@@ -145,11 +152,6 @@ final class SendToPowerBINodeModel extends NodeModel {
         final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
         execPrepare.setMessage("Authenticating with Microsoft Power BI");
 
-        // Get the input and some information
-        final BufferedDataTable inTable = inData[0];
-        final double rowCount = inTable.size();
-        final DataTableSpec inSpec = inTable.getDataTableSpec();
-
         // TODO make sure to keep this in mind:
         // https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
         /*
@@ -172,8 +174,7 @@ final class SendToPowerBINodeModel extends NodeModel {
         execPrepare.setMessage("Checking for exisiting datasets");
 
         // Get the settings
-        // TODO handle multiple tables
-        final String tableName = m_settings.getTableNames()[0];
+        final String[] tableNames = m_settings.getTableNames();
         final String datasetName = m_settings.getDatasetName();
         final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();
         final boolean createNewDataset = m_settings.isCreateNewDataset();
@@ -206,61 +207,68 @@ final class SendToPowerBINodeModel extends NodeModel {
                         + "\" already exists and does not support adding rows.");
                 }
                 final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
-                final Table table = getTableWithName(tables, tableName);
-                if (table == null) {
-                    throw new InvalidSettingsException("The dataset with the name \"" + datasetName
-                        + "\" exists but has no table with the name \"" + tableName + "\".");
-                }
+                checkTablesExist(tables, tableNames);
             }
         }
 
         if (datasetId == null) {
             // Create the dataset
-            final Table pbiTable = createTableDef(tableName, inSpec);
-            final Dataset pbiDataset = PowerBIRestAPIUtils.postDataset(auth, workspaceId, datasetName,
-                POWERBI_DATASET_MODE, new Table[]{pbiTable});
+            final Table[] tables = new Table[m_numberInputs];
+            for (int i = 0; i < m_numberInputs; i++) {
+                tables[i] = createTableDef(tableNames[i], inData[i].getDataTableSpec());
+            }
+            final Dataset pbiDataset =
+                PowerBIRestAPIUtils.postDataset(auth, workspaceId, datasetName, POWERBI_DATASET_MODE, tables);
             datasetId = pbiDataset.getId();
         }
 
         // Finish the prepare step
         execPrepare.setProgress(1);
 
-        // Send the table
-        final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(inSpec));
+        // Send the tables
+        for (int i = 0; i < m_numberInputs; i++) {
+            final ExecutionMonitor execSendRows = exec.createSubProgress(PROGRESS_SEND_ROWS / m_numberInputs);
+            sendTable(inData[i], execSendRows, auth, workspaceId, datasetId, tableNames[i]);
+        }
+
+        return new BufferedDataTable[0];
+    }
+
+    private void sendTable(final BufferedDataTable table, final ExecutionMonitor exec, final AzureADAuthentication auth,
+        final String workspaceId, final String datasetId, final String tableName)
+        throws CanceledExecutionException, PowerBIResponseException {
+        final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(table.getDataTableSpec()));
         long rowIdx = 0;
-        final ExecutionMonitor execSendRows = exec.createSubProgress(PROGRESS_SEND_ROWS);
-        execSendRows.setProgress(0);
-        for (final DataRow row : inTable) {
+        final double rowCount = table.size();
+        exec.setProgress(0);
+        for (final DataRow row : table) {
             if (!rowBuilder.acceptsRows()) {
-                try {
-                    // Send to Power BI
-                    PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
-                    rowBuilder.reset();
-                } catch (PowerBIResponseException ex) {
-                    throw new RuntimeException("Error while sending data to PowerBI. See log for details.", ex);
-                }
+                // Send to Power BI
+                PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
+                rowBuilder.reset();
             }
             rowBuilder.addRow(row);
-            execSendRows.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long)rowCount);
+            exec.setProgress(rowIdx / rowCount, "Sending row " + rowIdx + " of " + (long)rowCount);
             rowIdx++;
             // TODO can we delete the dataset that is uploaded half way?
             exec.checkCanceled();
         }
         // Send the last rows
         PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
-        execSendRows.setProgress(1);
-
-        return new BufferedDataTable[0];
+        exec.setProgress(1);
     }
 
     /** Get the table with the given name */
-    private static Table getTableWithName(final Tables tables, final String tableName) {
-        for (final Table table : tables.getValue()) {
-            if (tableName.equals(table.getName())) {
-                return table;
+    private static void checkTablesExist(final Tables tables, final String[] tableNames)
+        throws InvalidSettingsException {
+        final Set<String> availableTables =
+            Arrays.stream(tables.getValue()).map(Table::getName).collect(Collectors.toSet());
+        for (final String t : tableNames) {
+            if (!availableTables.contains(t)) {
+                throw new InvalidSettingsException(
+                    "The dataset contains no table with the name \"" + t + "\". Please reconfigure the node.");
             }
         }
-        return null;
     }
 
     /** Get the dataset with the given name */
@@ -331,7 +339,7 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        SendToPowerBINodeSettings.validateSettings(1, settings);
+        SendToPowerBINodeSettings.validateSettings(m_numberInputs, settings);
     }
 
     @Override

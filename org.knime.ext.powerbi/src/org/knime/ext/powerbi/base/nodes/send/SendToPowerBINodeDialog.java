@@ -139,8 +139,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JLabel m_authenticateInfo;
 
-    public SendToPowerBINodeDialog() {
-        m_numberInputs = 1;
+    public SendToPowerBINodeDialog(final int numberInputs) {
+        m_numberInputs = numberInputs;
         m_settings = new SendToPowerBINodeSettings();
         m_authenticator = new AzureADAuthenticator(SendToPowerBINodeModel.OAUTH_POWERBI_SCOPE);
         m_authenticator.addListener(this::authenticationChanged);
