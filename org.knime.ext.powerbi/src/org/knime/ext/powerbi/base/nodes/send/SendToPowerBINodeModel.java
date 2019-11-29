@@ -111,13 +111,10 @@ final class SendToPowerBINodeModel extends NodeModel {
         "https://analysis.windows.net/powerbi/api/Workspace.Read.All" // Required to get the workspaces
     );
 
-    private final int m_numberInputs;
-
     private final SendToPowerBINodeSettings m_settings;
 
     SendToPowerBINodeModel(final PortsConfiguration portsConfiguration) {
         super(portsConfiguration.getInputPorts(), portsConfiguration.getOutputPorts());
-        m_numberInputs = portsConfiguration.getInputPorts().length;
         m_settings = new SendToPowerBINodeSettings();
     }
 
@@ -198,8 +195,8 @@ final class SendToPowerBINodeModel extends NodeModel {
 
         if (datasetId == null) {
             // Create the dataset
-            final Table[] tables = new Table[m_numberInputs];
-            for (int i = 0; i < m_numberInputs; i++) {
+            final Table[] tables = new Table[inData.length];
+            for (int i = 0; i < inData.length; i++) {
                 tables[i] = createTableDef(tableNames[i], inData[i].getDataTableSpec());
             }
             final Dataset pbiDataset =
@@ -211,8 +208,8 @@ final class SendToPowerBINodeModel extends NodeModel {
         execPrepare.setProgress(1);
 
         // Send the tables
-        for (int i = 0; i < m_numberInputs; i++) {
-            final ExecutionMonitor execSendRows = exec.createSubProgress(PROGRESS_SEND_ROWS / m_numberInputs);
+        for (int i = 0; i < inData.length; i++) {
+            final ExecutionMonitor execSendRows = exec.createSubProgress(PROGRESS_SEND_ROWS / inData.length);
             sendTable(inData[i], execSendRows, auth, workspaceId, datasetId, tableNames[i]);
         }
 
