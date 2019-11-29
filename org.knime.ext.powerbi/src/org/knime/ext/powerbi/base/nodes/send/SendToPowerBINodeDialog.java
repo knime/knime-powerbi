@@ -54,6 +54,7 @@ import java.awt.Insets;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -545,10 +546,12 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         // Reselect
         if (datasetNames.contains(selected)) {
             m_datasetNameAppend.setSelectedItem(selected);
+        } else if (datasetNames.isEmpty()) {
+            // If there are no datasets: Reset the table dropdown
+            setTableOptions(Collections.emptyList());
         } else {
             m_datasetNameAppend.setSelectedIndex(0);
         }
-
     }
 
     /** Set the table options to the given argument (and reselect or select the default) */
@@ -566,7 +569,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             // Reselect
             if (tableNames.contains(selected)) {
                 tableNameAppend.setSelectedItem(selected);
-            } else {
+            } else if (!tableNames.isEmpty()) {
                 tableNameAppend.setSelectedIndex(i % tableNames.size());
             }
         }
