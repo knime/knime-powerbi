@@ -274,7 +274,7 @@ final class SendToPowerBINodeSettings {
         saveAuthentication(settings);
     }
 
-    static void validateSettings(final int numberOfInputs, final NodeSettingsRO settings)
+    static void validateSettings(final NodeSettingsRO settings)
         throws InvalidSettingsException {
         // Note that the workspace config can be empty
         settings.getString(CFG_KEY_WORKSPACE);
@@ -288,7 +288,7 @@ final class SendToPowerBINodeSettings {
 
         // Check the table names
         final String[] tableNames = settings.getStringArray(CFG_KEY_TABLE_NAMES);
-        checkTableNamesValid(numberOfInputs, tableNames);
+        checkTableNamesValid(tableNames);
 
         // Check selected location if chosen from radio buttons.
         if (CredentialsLocationType.fromActionCommand(
@@ -647,19 +647,14 @@ final class SendToPowerBINodeSettings {
     }
 
     /** Checks that no table name are valid. All set and none twice. */
-    private static void checkTableNamesValid(final int numberOfInputs, final String[] tableNames)
+    private static void checkTableNamesValid(final String[] tableNames)
         throws InvalidSettingsException {
-        // Check that there are enough table names
-        if (numberOfInputs > tableNames.length) {
-            throw new InvalidSettingsException("Please reconfigure the node and provide all table names.");
-        }
-
         // Loop over names and check
         final Set<String> allNames = new HashSet<>();
-        for (int i = 0; i < numberOfInputs; i++) {
+        for (int i = 0; i < tableNames.length; i++) {
             if (tableNames[i] == null || tableNames[i].trim().isEmpty()
                 || tableNames[i].equals(SendToPowerBINodeDialog.TABLE_PLACEHOLDER)) {
-                if (i == 0 && numberOfInputs == 1) {
+                if (i == 0 && tableNames.length == 1) {
                     throw new InvalidSettingsException("Table name must not be empty.");
                 } else {
                     throw new InvalidSettingsException("Table name for table " + (i + 1) + " must not be empty.");
@@ -669,7 +664,7 @@ final class SendToPowerBINodeSettings {
         }
 
         // Check if none of them are equal
-        if (allNames.size() != numberOfInputs) {
+        if (allNames.size() != tableNames.length) {
             throw new InvalidSettingsException("Please use unique table names for each table.");
         }
     }

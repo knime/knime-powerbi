@@ -140,6 +140,11 @@ final class SendToPowerBINodeModel extends NodeModel {
                     + POWERBI_MAX_COLUMNS + "). " + " Please filter out unneeded columns.");
         }
 
+        // Check if a table name for each table is configured
+        if (inSpecs.length > m_settings.getTableNames().length) {
+            throw new InvalidSettingsException("Not all table names are configured. Please reconfigure the node.");
+        }
+
         return new DataTableSpec[0];
     }
 
@@ -319,7 +324,11 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        SendToPowerBINodeSettings.validateSettings(m_numberInputs, settings);
+        /* Note:
+        * Do not check if the number of table names is correct.
+        * It could be incorrect after adding a port and we still want to load the settings
+        */
+        SendToPowerBINodeSettings.validateSettings(settings);
     }
 
     @Override
