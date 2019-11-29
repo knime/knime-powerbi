@@ -471,7 +471,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     /** Start a thread to update the dataset options */
     private void updateDatasetOptions() {
-        if (m_updatingWorkspaceOptions.get()) {
+        if (m_updatingWorkspaceOptions.get() || !AuthenticatorState.AUTHENTICATED.equals(m_authenticator.getState())) {
+            // Either updating the workspaces or not authenticated
             return;
         }
         final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
@@ -490,7 +491,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     /** Start a thread to update the table options */
     private void updateTableOptions() {
-        if (m_updatingDatasetOptions.get()) {
+        if (m_updatingDatasetOptions.get() || !AuthenticatorState.AUTHENTICATED.equals(m_authenticator.getState())) {
+            // Either updating the datasets or not authenticated
             return;
         }
         final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
