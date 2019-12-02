@@ -470,7 +470,7 @@ enum CredentialsLocationType {
             "The authentication credentials will be kept in memory; they are discarded when exiting KNIME."),
         NODE("Node", "Node (credentials saved as part of node instance)",
             "The authentication credentials will be stored in the node settings."),
-        FILESYSTEM("Local File", "Local File (authentication saved in local file)",
+        FILESYSTEM("Local File", "Local File (credentials saved in local file)",
             "The authentication credentials will be stored in the specified file.");
 
     private String m_toolTip;
