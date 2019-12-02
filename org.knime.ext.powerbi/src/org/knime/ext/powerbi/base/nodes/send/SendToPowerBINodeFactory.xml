@@ -109,39 +109,43 @@
 				Deletes all stored authentication credentials. Also see description of 
 				<i>Clear Selected Credentials</i> button. In case you do not want to share your credentials
 				with this workflow, all credentials should be cleared beforehand. 
-				
 			</option>
 		</tab>
-		<tab name="Dataset Selection">
+		<tab name="Dataset">
 			<option name="Workspace">
-				The name of the workspace to use. Leave this
-				option empty to use the default workspace "My workspace".
+				Select the workspace to use. Select "default" to use the default
+				workspace which is called "My workspace" in the Power BI user
+				interface.
+				<br />
+				<b>NOTE:</b>
+				To see the workspace options you have to be authenticated.
+			</option>
+			<option name="Create new Dataset">
+				Select this option to create a new dataset in the selected Power BI workspace.
+			</option>
+			<option name="Append to existing Dataset">
+				Select this option to append the input tables to an existing dataset.
+				Note that the dataset has to be a
+				<a
+					href="https://docs.microsoft.com/en-us/power-bi/service-real-time-streaming#types-of-real-time-datasets">"Push dataset"</a>
+				for this option to work.
 			</option>
 			<option name="Dataset name">
-				The name of the dataset to upload.
+				The name of the dataset to create.
 			</option>
 			<option name="Table name">
-				The name of the table in the dataset to upload.
+				The name of the table in the dataset to upload. If multiple tables are
+				uploaded a name has to be configured for each table and the names have
+				to be unique.
 			</option>
-			<option name="In dataset exists...">
-				<ul>
-					<li>
-						<b>Overwrite</b>
-						: If the dataset already exists it will be deleted before
-						uploading the new dataset
-					</li>
-					<li>
-						<b>Append</b>
-						: If the dataset already exists the data will be appended to the
-						existing dataset. Note that the dataset has to be a 
-						<a href="https://docs.microsoft.com/en-us/power-bi/service-real-time-streaming#types-of-real-time-datasets">"Push dataset"</a> 
-						for this option to work.
-					</li>
-					<li>
-						<b>Abort</b>
-						: If the dataset already exists the node fails.
-					</li>
-				</ul>
+			<option name="Delete and create new if dataset exists">
+				Select this option to delete a dataset with the same name if one exists
+				before creating the new dataset. If a dataset with the configured name
+				exists but this option is not selected the node will fail.
+				<br />
+				<b>NOTE: All reports and dashboard tiles containing data from the
+					dataset will also be deleted.
+				</b>
 			</option>
 		</tab>
 	</fullDescription>
