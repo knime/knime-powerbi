@@ -100,6 +100,8 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     private static final int POWERBI_MAX_COLUMNS = 75;
 
+    private static final int POWERBI_MAX_TABLES = 75;
+
     private static final String POWERBI_DATASET_MODE = "Push";
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
@@ -127,6 +129,12 @@ final class SendToPowerBINodeModel extends NodeModel {
         // Check if a table name for each table is configured
         if (inSpecs.length > m_settings.getTableNames().length) {
             throw new InvalidSettingsException("Not all table names are configured. Please reconfigure the node.");
+        }
+
+        // Check that there are no more than 75 tables
+        if (inSpecs.length > POWERBI_MAX_TABLES) {
+            throw new InvalidSettingsException("Too many table inputs are configured (" + inSpecs.length
+                + "). The Power BI API only allows " + POWERBI_MAX_TABLES + " tables per dataset.");
         }
 
         // Check if there is an column with a compatible type in each table
