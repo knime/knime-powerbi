@@ -102,6 +102,12 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     private static final int POWERBI_MAX_TABLES = 75;
 
+    /** 10000 rows per request are allowed */
+    private static final int REQUEST_MAX_ROW_COUNT = 10000;
+
+    /** Limit around 8MB (64MB is the limit of the server but this seemed a bit high) */
+    private static final int REQUEST_MAX_BODY_LENGTH = 8 * 1024 * 1024;
+
     private static final String POWERBI_DATASET_MODE = "Push";
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
@@ -372,9 +378,6 @@ final class SendToPowerBINodeModel extends NodeModel {
 
         private static final String ROWS_JSON_END = "]}";
 
-        // TODO use smarter metrics to decide if more rows get accepted
-        private static final int MAX_ROW_COUNT = 400;
-
         private final Map<String, Integer> m_columnNameAndIndex;
 
         private StringBuilder m_builder;
@@ -403,7 +406,8 @@ final class SendToPowerBINodeModel extends NodeModel {
         }
 
         private boolean acceptsRows() {
-            return m_rowCount < MAX_ROW_COUNT;
+            return m_rowCount < REQUEST_MAX_ROW_COUNT //
+                && m_builder.length() < REQUEST_MAX_BODY_LENGTH - 2;
         }
 
         private void reset() {
