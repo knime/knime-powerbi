@@ -124,22 +124,24 @@ final class SendToPowerBINodeModel extends NodeModel {
         if (m_settings.getAuthentication() == null) {
             throw new InvalidSettingsException("Not authenticated. Please authenticate in the Node Configuration.");
         }
-
-        // Check if there is an column with a compatible type
-        final Map<String, Integer> columnIndexMap = getColumnIndexMap(inSpecs[0]);
-        if (columnIndexMap.isEmpty()) {
-            throw new InvalidSettingsException("No column with a compatible datatype is available."
-                + " See node description for the list of supported datatypes.");
-        }
-        if (columnIndexMap.size() > POWERBI_MAX_COLUMNS) {
-            throw new InvalidSettingsException(
-                "The table contains more columns (" + columnIndexMap.size() + ") than supported by the Power BI API ("
-                    + POWERBI_MAX_COLUMNS + "). " + " Please filter out unneeded columns.");
-        }
-
         // Check if a table name for each table is configured
         if (inSpecs.length > m_settings.getTableNames().length) {
             throw new InvalidSettingsException("Not all table names are configured. Please reconfigure the node.");
+        }
+
+        // Check if there is an column with a compatible type in each table
+        for (int i = 0; i < inSpecs.length; i++) {
+            final Map<String, Integer> columnIndexMap = getColumnIndexMap(inSpecs[i]);
+            if (columnIndexMap.isEmpty()) {
+                throw new InvalidSettingsException("No column with a compatible datatype is available in table "
+                    + (i + 1) + ". See the node description for the list of supported datatypes.");
+            }
+            // Check that there are no more than 75 columns
+            if (columnIndexMap.size() > POWERBI_MAX_COLUMNS) {
+                throw new InvalidSettingsException("Table " + (i + 1) + " contains more columns ("
+                    + columnIndexMap.size() + ") than supported by the Power BI API (" + POWERBI_MAX_COLUMNS + "). "
+                    + " Please filter out unneeded columns.");
+            }
         }
 
         return new DataTableSpec[0];
