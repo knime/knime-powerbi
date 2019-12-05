@@ -102,6 +102,10 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     private static final int POWERBI_MAX_TABLES = 75;
 
+    private static final int POWERBI_MAX_ROWS_PER_HOUR = 1000000;
+
+    private static final int POWERBI_MAX_ROWS_NONE_RETENTION = 5000000;
+
     /** 10000 rows per request are allowed */
     private static final int REQUEST_MAX_ROW_COUNT = 10000;
 
@@ -165,10 +169,12 @@ final class SendToPowerBINodeModel extends NodeModel {
     protected BufferedDataTable[] execute(final BufferedDataTable[] inData, final ExecutionContext exec)
         throws Exception {
         final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
+        execPrepare.setMessage("Checking for exisiting datasets");
 
         // TODO make sure to keep this in mind:
         // https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
-        execPrepare.setMessage("Checking for exisiting datasets");
+
+        checkTableSize(inData);
 
         // Get the settings
         final AzureADAuthentication auth = m_settings.getAuthentication();
@@ -254,6 +260,25 @@ final class SendToPowerBINodeModel extends NodeModel {
         // Send the last rows
         PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
         exec.setProgress(1);
+    }
+
+    /** Checks the size of the given tables. Sets a warning if > 1M rows and throws exception if > 5M rows */
+    private void checkTableSize(final BufferedDataTable[] inData) throws InvalidSettingsException {
+        // Check the size of the tables
+        for (int i = 0; i < inData.length; i++) {
+            if (inData[i].size() > POWERBI_MAX_ROWS_NONE_RETENTION) {
+                throw new InvalidSettingsException("Table " + (i + 1) + " contains more than "
+                    + POWERBI_MAX_ROWS_NONE_RETENTION + " rows which is not supported by Power BI. Note that only "
+                    + POWERBI_MAX_ROWS_PER_HOUR + " can be uploaded per hour.");
+            } else if (inData[i].size() > POWERBI_MAX_ROWS_PER_HOUR) {
+                setWarningMessage("Table " + (i + 1)
+                    + " contains more rows than can be uploaded to Power BI per hour. See log for details.");
+                LOGGER.warn("Table " + (i + 1) + " contains " + inData[i].size() + " rows "
+                    + "which is more than the maximum amount that can be uploaded to Power BI in one hour ("
+                    + POWERBI_MAX_ROWS_PER_HOUR + "). " + "The node will probably fail because of this. "
+                    + "Consider filtering the rows and sending only " + POWERBI_MAX_ROWS_PER_HOUR + " rows per hour.");
+            }
+        }
     }
 
     /** Get the table with the given name */
