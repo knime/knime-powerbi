@@ -78,6 +78,7 @@ import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.DefaultOAuth20Scope;
 import org.knime.ext.azuread.auth.OAuth20Scope;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
+import org.knime.ext.powerbi.core.PowerBIDataTypeUtils.PowerBIIllegalValueException;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
 import org.knime.ext.powerbi.core.rest.bindings.Column;
@@ -240,7 +241,7 @@ final class SendToPowerBINodeModel extends NodeModel {
 
     private void sendTable(final BufferedDataTable table, final ExecutionMonitor exec, final AzureADAuthentication auth,
         final String workspaceId, final String datasetId, final String tableName)
-        throws CanceledExecutionException, PowerBIResponseException {
+        throws CanceledExecutionException, PowerBIResponseException, PowerBIIllegalValueException {
         final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(table.getDataTableSpec()));
         long rowIdx = 0;
         final double rowCount = table.size();
@@ -414,7 +415,7 @@ final class SendToPowerBINodeModel extends NodeModel {
             reset();
         }
 
-        private void addRow(final DataRow row) {
+        private void addRow(final DataRow row) throws PowerBIIllegalValueException {
             boolean firstCol = true;
             m_builder.append(m_rowCount == 0 ? "{" : ",{");
             for (final Entry<String, Integer> colNameIndex : m_columnNameAndIndex.entrySet()) {

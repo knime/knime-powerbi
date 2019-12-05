@@ -75,6 +75,8 @@ import com.google.gson.Gson;
  */
 public class PowerBIDataTypeUtils {
 
+    private static final int POWERBI_MAX_STRING_LENGTH = 4000;
+
     private static final Gson GSON = new Gson();
 
     private PowerBIDataTypeUtils() {
@@ -111,8 +113,11 @@ public class PowerBIDataTypeUtils {
      *
      * @param value the KNIME data value
      * @return the JSON string representation of the value for Power BI
+     * @throws PowerBIIllegalValueException if the value could not be converted because it's not an allowed value for
+     *             Power BI
      */
-    public static Optional<String> powerBIValueForKNIMEValue(final DataValue value) {
+    public static Optional<String> powerBIValueForKNIMEValue(final DataValue value)
+        throws PowerBIIllegalValueException {
         if (value instanceof MissingCell) {
             return Optional.of("null");
         } else if (value instanceof BooleanValue) {
@@ -137,9 +142,26 @@ public class PowerBIDataTypeUtils {
             return Optional.of('"' + v + '"');
         } else if (value instanceof StringValue) {
             final String v = ((StringValue)value).getStringValue();
+            if (v.length() > POWERBI_MAX_STRING_LENGTH) {
+                throw new PowerBIIllegalValueException(
+                    "The string value contains " + v.length() + " characters which is more than the allowed length of "
+                        + POWERBI_MAX_STRING_LENGTH + " characters.");
+            }
             String json = GSON.toJson(v);
             return Optional.of(json);
         }
         return Optional.empty();
+    }
+
+    /**
+     * An exception that is thrown if a data value is not supported by Power BI.
+     */
+    public static final class PowerBIIllegalValueException extends Exception {
+
+        private static final long serialVersionUID = 1L;
+
+        private PowerBIIllegalValueException(final String message) {
+            super(message);
+        }
     }
 }
