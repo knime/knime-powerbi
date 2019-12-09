@@ -95,7 +95,8 @@ public final class ErrorResponse {
 
         @Override
         public String toString() {
-            return "Error: " + getMessage() + ", Code: " + getCode() + ", Details: " + Arrays.toString(getDetails());
+            return "Error: " + getMessage() + ", Code: " + getCode() + //
+                (getDetails() != null ? ", Details: " + Arrays.toString(getDetails()) : "");
         }
 
         /**
