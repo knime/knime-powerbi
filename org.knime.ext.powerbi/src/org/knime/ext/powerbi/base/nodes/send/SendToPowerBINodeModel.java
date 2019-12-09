@@ -172,9 +172,6 @@ final class SendToPowerBINodeModel extends NodeModel {
         final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
         execPrepare.setMessage("Checking for exisiting datasets");
 
-        // TODO make sure to keep this in mind:
-        // https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations?redirectedfrom=MSDN
-
         checkTableSize(inData);
 
         // Get the settings
