@@ -113,7 +113,8 @@ public final class ErrorResponse {
          * @return the message
          */
         public String getMessage() {
-            return message;
+            // Replace html tags
+            return message.replaceAll("\\<.*?\\>", "");
         }
 
         /**
