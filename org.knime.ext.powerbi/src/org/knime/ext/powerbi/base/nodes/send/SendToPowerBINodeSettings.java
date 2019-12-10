@@ -108,6 +108,8 @@ final class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
 
+    private static final String CFG_KEY_APPEND_ROWS = "append_rows";
+
     private static final String CFG_KEY_FILESYSTEM_LOCATION = "filesystem_location";
 
     private static final String CFG_KEY_CREDENTIALS_SAVE_LOCATION = "credentials_save_location";
@@ -131,6 +133,8 @@ final class SendToPowerBINodeSettings {
     private boolean m_createNewDataset = true;
 
     private boolean m_allowOverwrite = false;
+
+    private boolean m_appendRows = true;
 
     private String m_filesystemLocation = "";
 
@@ -233,6 +237,20 @@ final class SendToPowerBINodeSettings {
     }
 
     /**
+     * @return the appendRows
+     */
+    boolean isAppendRows() {
+        return m_appendRows;
+    }
+
+    /**
+     * @param appendRows the appendRows to set
+     */
+    void setAppendRows(final boolean appendRows) {
+        m_appendRows = appendRows;
+    }
+
+    /**
      * @return the filesystemLocation
      */
     String getFilesystemLocation() {
@@ -266,6 +284,7 @@ final class SendToPowerBINodeSettings {
         settings.addStringArray(CFG_KEY_TABLE_NAMES, getTableNames());
         settings.addBoolean(CFG_KEY_CREATE_NEW_DATASET, m_createNewDataset);
         settings.addBoolean(CFG_KEY_ALLOW_OVERWRITE, m_allowOverwrite);
+        settings.addBoolean(CFG_KEY_APPEND_ROWS, m_appendRows);
 
         settings.addString(CFG_KEY_NODE_ID, m_nodeId);
         settings.addString(CFG_KEY_FILESYSTEM_LOCATION, getFilesystemLocation());
@@ -274,8 +293,7 @@ final class SendToPowerBINodeSettings {
         saveAuthentication(settings);
     }
 
-    static void validateSettings(final NodeSettingsRO settings)
-        throws InvalidSettingsException {
+    static void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         // Note that the workspace config can be empty
         settings.getString(CFG_KEY_WORKSPACE);
 
@@ -312,6 +330,7 @@ final class SendToPowerBINodeSettings {
 
         setCreateNewDataset(settings.getBoolean(CFG_KEY_CREATE_NEW_DATASET));
         setAllowOverwrite(settings.getBoolean(CFG_KEY_ALLOW_OVERWRITE));
+        setAppendRows(settings.getBoolean(CFG_KEY_APPEND_ROWS, true));
 
         // Load the authentication last (in case it fails)
         loadAuthentication(settings);
@@ -647,8 +666,7 @@ final class SendToPowerBINodeSettings {
     }
 
     /** Checks that no table name are valid. All set and none twice. */
-    private static void checkTableNamesValid(final String[] tableNames)
-        throws InvalidSettingsException {
+    private static void checkTableNamesValid(final String[] tableNames) throws InvalidSettingsException {
         // Loop over names and check
         final Set<String> allNames = new HashSet<>();
         for (int i = 0; i < tableNames.length; i++) {

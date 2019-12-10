@@ -63,6 +63,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -126,7 +127,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JRadioButton m_createNewButton;
 
-    private JRadioButton m_appendToExisting;
+    private JRadioButton m_selectExisting;
 
     private JCheckBox m_allowOverwrite;
 
@@ -134,9 +135,13 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JTextField[] m_tableNamesCreate;
 
-    private JComboBox<PowerBIDataset> m_datasetNameAppend;
+    private JComboBox<PowerBIDataset> m_datasetNameSelect;
 
-    private JComboBox<String>[] m_tableNamesAppend;
+    private JComboBox<String>[] m_tableNamesSelect;
+
+    private JRadioButton m_appendToExisting;
+
+    private JRadioButton m_refreshExisting;
 
     private JLabel m_authenticateInfo;
 
@@ -227,22 +232,22 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         gbc.gridx = 0;
         gbc.weightx = 1;
         // Append to existing dataset
-        m_appendToExisting = new JRadioButton("Append to existing Dataset");
-        panel.add(m_appendToExisting, gbc);
+        m_selectExisting = new JRadioButton("Select existing Dataset");
+        panel.add(m_selectExisting, gbc);
 
         gbc.gridy++;
         gbc.gridx = 1;
         gbc.weightx = 1;
-        panel.add(createAppendToDatasetPanel(), gbc);
+        panel.add(createSelectDatasetPanel(), gbc);
 
         // Button group
         final ButtonGroup bg = new ButtonGroup();
         bg.add(m_createNewButton);
-        bg.add(m_appendToExisting);
+        bg.add(m_selectExisting);
 
         // Action listener for create new/append
         m_createNewButton.addActionListener(e -> enableDisableComboboxes());
-        m_appendToExisting.addActionListener(e -> enableDisableComboboxes());
+        m_selectExisting.addActionListener(e -> enableDisableComboboxes());
 
         gbc.gridy++;
         gbc.gridx = 0;
@@ -293,8 +298,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         return panel;
     }
 
-    /** Append to an existing dataset panel */
-    private JPanel createAppendToDatasetPanel() {
+    /** Select an existing dataset panel */
+    private JPanel createSelectDatasetPanel() {
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints gbc = createGBC();
 
@@ -302,13 +307,13 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         panel.add(new JLabel("Dataset name"), gbc);
         gbc.gridx++;
         gbc.weightx = 3;
-        m_datasetNameAppend = new JComboBox<>(new PowerBIDataset[]{DATASET_PLACEHOLDER_OBJECT});
-        m_datasetNameAppend.addActionListener(e -> updateTableOptions());
-        panel.add(m_datasetNameAppend, gbc);
+        m_datasetNameSelect = new JComboBox<>(new PowerBIDataset[]{DATASET_PLACEHOLDER_OBJECT});
+        m_datasetNameSelect.addActionListener(e -> updateTableOptions());
+        panel.add(m_datasetNameSelect, gbc);
 
         @SuppressWarnings("unchecked")
         final JComboBox<String>[] tableNamesAppendLocal = new JComboBox[m_numberInputs];
-        m_tableNamesAppend = tableNamesAppendLocal;
+        m_tableNamesSelect = tableNamesAppendLocal;
         for (int i = 0; i < m_numberInputs; i++) {
             gbc.gridy++;
             gbc.gridx = 0;
@@ -318,9 +323,37 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             panel.add(new JLabel(label), gbc);
             gbc.gridx++;
             gbc.weightx = 3;
-            m_tableNamesAppend[i] = new JComboBox<>(new String[]{TABLE_PLACEHOLDER});
-            panel.add(m_tableNamesAppend[i], gbc);
+            m_tableNamesSelect[i] = new JComboBox<>(new String[]{TABLE_PLACEHOLDER});
+            panel.add(m_tableNamesSelect[i], gbc);
         }
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.gridwidth = 2;
+        // Append or refresh
+        panel.add(createAppendRefreshPanel(), gbc);
+
+        return panel;
+    }
+
+    /** Append or refresh an existing table panel */
+    private JPanel createAppendRefreshPanel() {
+        final JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.LINE_AXIS));
+
+        // Append to existing table
+        m_appendToExisting = new JRadioButton("Append rows");
+        panel.add(m_appendToExisting);
+
+        // Refresh existing table
+        m_refreshExisting = new JRadioButton("Overwrite rows");
+        panel.add(m_refreshExisting);
+
+        // Button group for radio buttons
+        final ButtonGroup bg = new ButtonGroup();
+        bg.add(m_appendToExisting);
+        bg.add(m_refreshExisting);
 
         return panel;
     }
@@ -337,6 +370,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         final boolean createNew = m_createNewButton.isSelected();
         m_settings.setCreateNewDataset(createNew);
         m_settings.setAllowOverwrite(m_allowOverwrite.isSelected());
+        m_settings.setAppendRows(m_appendToExisting.isSelected());
 
         // Dataset and table names
         if (createNew) {
@@ -345,14 +379,14 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
                 Arrays.stream(m_tableNamesCreate).map(JTextField::getText).toArray(String[]::new);
             m_settings.setTableNames(tableNames);
         } else {
-            final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameAppend.getSelectedItem();
+            final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
             if (dataset == null) {
                 throw new InvalidSettingsException("Please select a dataset.");
             }
             m_settings.setDatasetName(dataset.m_name);
 
             final String[] tableNames =
-                Arrays.stream(m_tableNamesAppend).map(c -> (String)c.getSelectedItem()).toArray(String[]::new);
+                Arrays.stream(m_tableNamesSelect).map(c -> (String)c.getSelectedItem()).toArray(String[]::new);
             m_settings.setTableNames(tableNames);
         }
 
@@ -393,13 +427,10 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             m_workspace.setSelectedItem(selectedWorkspace);
         }
 
-        // Create or append
+        // Create or select
         final boolean createNewDataset = m_settings.isCreateNewDataset();
-        if (createNewDataset) {
-            m_createNewButton.doClick();
-        } else {
-            m_appendToExisting.doClick();
-        }
+        m_createNewButton.setSelected(createNewDataset);
+        m_selectExisting.setSelected(!createNewDataset);
 
         // Dataset and table name
         if (createNewDataset) {
@@ -414,18 +445,26 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             // Dataset name
             final String datasetName = m_settings.getDatasetName();
             final PowerBIDataset dataset = new PowerBIDataset(datasetName, null);
-            m_datasetNameAppend.addItem(dataset);
-            m_datasetNameAppend.setSelectedItem(dataset);
+            m_datasetNameSelect.addItem(dataset);
+            m_datasetNameSelect.setSelectedItem(dataset);
             // Table names
             final String[] tableNames = m_settings.getTableNames();
             for (int i = 0; i < m_numberInputs && i < tableNames.length; i++) {
-                m_tableNamesAppend[i].addItem(tableNames[i]);
-                m_tableNamesAppend[i].setSelectedItem(tableNames[i]);
+                m_tableNamesSelect[i].addItem(tableNames[i]);
+                m_tableNamesSelect[i].setSelectedItem(tableNames[i]);
             }
         }
 
         // Allow overwrite
         m_allowOverwrite.setSelected(m_settings.isAllowOverwrite());
+
+        // Append or refresh
+        final boolean appendRows = m_settings.isAppendRows();
+        m_appendToExisting.setSelected(appendRows);
+        m_refreshExisting.setSelected(!appendRows);
+
+        // Update which components are enabled
+        enableDisableComboboxes();
     }
 
     /* -------------------------------------- Handling changes ---------------------------- */
@@ -441,7 +480,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private void enableDisableComboboxes() {
         final boolean authenticated = AuthenticatorState.AUTHENTICATED.equals(m_authenticator.getState());
         final boolean enableNewDataset = m_createNewButton.isSelected();
-        final boolean enableDatasetAppend = !enableNewDataset && authenticated;
+        final boolean enableDatasetSelect = !enableNewDataset && authenticated;
 
         // Workspace selection
         m_workspace.setEnabled(authenticated);
@@ -454,10 +493,12 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_allowOverwrite.setEnabled(enableNewDataset);
 
         // Append to existing dataset
-        m_datasetNameAppend.setEnabled(enableDatasetAppend);
-        for (final JComboBox<String> tableNameAppend : m_tableNamesAppend) {
-            tableNameAppend.setEnabled(enableDatasetAppend);
+        m_datasetNameSelect.setEnabled(enableDatasetSelect);
+        for (final JComboBox<String> tableNameAppend : m_tableNamesSelect) {
+            tableNameAppend.setEnabled(enableDatasetSelect);
         }
+        m_appendToExisting.setEnabled(!enableNewDataset);
+        m_refreshExisting.setEnabled(!enableNewDataset);
     }
 
     /** Start a thread to update the workspace options */
@@ -497,7 +538,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             return;
         }
         final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
-        final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameAppend.getSelectedItem();
+        final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
         if (workspace == null || dataset == null || dataset.getIdentifier() == null) {
             // No dataset selected (or loaded from the settings)
             return;
@@ -534,30 +575,30 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     /** Set the dataset options to the given argument (and reselect or select the default) */
     private void setDatasetOptions(final List<PowerBIDataset> datasetNames) {
         // Get the selected value
-        final PowerBIDataset selected = (PowerBIDataset)m_datasetNameAppend.getSelectedItem();
+        final PowerBIDataset selected = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
 
         // Update the options and reselect
         m_updatingDatasetOptions.set(true);
-        m_datasetNameAppend.removeAllItems();
+        m_datasetNameSelect.removeAllItems();
         for (final PowerBIDataset d : datasetNames) {
-            m_datasetNameAppend.addItem(d);
+            m_datasetNameSelect.addItem(d);
         }
         m_updatingDatasetOptions.set(false);
         // Reselect
         if (datasetNames.contains(selected)) {
-            m_datasetNameAppend.setSelectedItem(selected);
+            m_datasetNameSelect.setSelectedItem(selected);
         } else if (datasetNames.isEmpty()) {
             // If there are no datasets: Reset the table dropdown
             setTableOptions(Collections.emptyList());
         } else {
-            m_datasetNameAppend.setSelectedIndex(0);
+            m_datasetNameSelect.setSelectedIndex(0);
         }
     }
 
     /** Set the table options to the given argument (and reselect or select the default) */
     private void setTableOptions(final List<String> tableNames) {
         for (int i = 0; i < m_numberInputs; i++) {
-            final JComboBox<String> tableNameAppend = m_tableNamesAppend[i];
+            final JComboBox<String> tableNameAppend = m_tableNamesSelect[i];
             // Get the selected values
             final String selected = (String)tableNameAppend.getSelectedItem();
 
