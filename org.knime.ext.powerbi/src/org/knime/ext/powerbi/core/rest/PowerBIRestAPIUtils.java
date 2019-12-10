@@ -122,6 +122,12 @@ public final class PowerBIRestAPIUtils {
 
     private static final String GET_GROUPS_URI = "https://api.powerbi.com/v1.0/myorg/groups";
 
+    private static final String DELETE_ROWS_URI =
+        "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/tables/{tableName}/rows";
+
+    private static final String DELETE_ROWS_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}/rows";
+
     private static final Gson GSON = new Gson();
 
     private PowerBIRestAPIUtils() {
@@ -362,6 +368,42 @@ public final class PowerBIRestAPIUtils {
     public static Groups getGroups(final AzureADAuthentication auth) throws PowerBIResponseException {
         refreshTokenIfNecessary(auth);
         return get(GET_GROUPS_URI, Groups.class, auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Dataset DeleteRows" from the Power BI REST API.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param datasetId the identifier of the dataset
+     * @param tableName the name of the table
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static void deleteRows(final AzureADAuthentication auth, final String datasetId, final String tableName)
+        throws PowerBIResponseException {
+        refreshTokenIfNecessary(auth);
+        final String uri = UriBuilder.fromPath(DELETE_ROWS_URI).build(datasetId, tableName).toString();
+        delete(uri, Void.class, auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Dataset DeleteRowsInGroup" from the Power BI REST API.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @param tableName the name of the table
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static void deleteRows(final AzureADAuthentication auth, final String groupId, final String datasetId,
+        final String tableName) throws PowerBIResponseException {
+        if (groupId == null) {
+            deleteRows(auth, datasetId, tableName);
+            return;
+        }
+        refreshTokenIfNecessary(auth);
+        final String uri =
+            UriBuilder.fromPath(DELETE_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
+        delete(uri, Void.class, auth);
     }
 
     /** Make a GET request */
