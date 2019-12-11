@@ -123,8 +123,9 @@
 			<option name="Create new Dataset">
 				Select this option to create a new dataset in the selected Power BI workspace.
 			</option>
-			<option name="Append to existing Dataset">
-				Select this option to append the input tables to an existing dataset.
+			<option name="Select existing Dataset">
+				Select this option to append the input tables to an existing dataset
+				or to overwrite all rows of a table of an existing dataset.
 				Note that the dataset has to be a
 				<a
 					href="https://docs.microsoft.com/en-us/power-bi/service-real-time-streaming#types-of-real-time-datasets">"Push dataset"</a>
@@ -146,6 +147,11 @@
 				<b>NOTE: All reports and dashboard tiles containing data from the
 					dataset will also be deleted.
 				</b>
+			</option>
+			<option name="Append/Overwrite rows">
+				Select if the input tables should be appended to the existing tables or
+				if all rows of the exiting table should be deleted and overwritten by
+				the input rows.
 			</option>
 		</tab>
 	</fullDescription>
