@@ -181,6 +181,7 @@ final class SendToPowerBINodeModel extends NodeModel {
         final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();
         final boolean createNewDataset = m_settings.isCreateNewDataset();
         final boolean allowOverwrite = m_settings.isAllowOverwrite();
+        final boolean appendToExisting = m_settings.isAppendRows();
 
         // Get the workspace id (can be null)
 
@@ -210,6 +211,10 @@ final class SendToPowerBINodeModel extends NodeModel {
                 }
                 final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
                 checkTablesExist(tables, tableNames);
+                // If refreshing we need to delete the selected tables
+                if (!appendToExisting) {
+                    deleteRowsFromTables(auth, workspaceId, datasetId, tableNames);
+                }
             }
         }
 
@@ -258,6 +263,14 @@ final class SendToPowerBINodeModel extends NodeModel {
         // Send the last rows
         PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
         exec.setProgress(1);
+    }
+
+    /** Deletes all rows from the given tables from the given dataset */
+    private static void deleteRowsFromTables(final AzureADAuthentication auth, final String workspaceId,
+        final String datasetId, final String[] tableNames) throws PowerBIResponseException {
+        for (final String t : tableNames) {
+            PowerBIRestAPIUtils.deleteRows(auth, workspaceId, datasetId, t);
+        }
     }
 
     /** Checks the size of the given tables. Sets a warning if > 1M rows and throws exception if > 5M rows */
