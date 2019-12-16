@@ -61,6 +61,13 @@
 					without asking you to log in again.
 				</li>
 			</ul>
+			<b>Note:</b>
+			The Power BI REST API has some limitations in terms of the size of a
+			dataset and the number of rows that can be shipped per hour. For more
+			information visit the
+			<a
+				href="https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations">documentation</a>
+			.
 		</intro>
 		<tab name="Authenticaion">
 			<option name="Authenticate">
