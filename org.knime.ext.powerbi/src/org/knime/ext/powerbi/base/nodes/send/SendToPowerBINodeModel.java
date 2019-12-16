@@ -276,19 +276,22 @@ final class SendToPowerBINodeModel extends NodeModel {
     /** Checks the size of the given tables. Sets a warning if > 1M rows and throws exception if > 5M rows */
     private void checkTableSize(final BufferedDataTable[] inData) throws InvalidSettingsException {
         // Check the size of the tables
+        long totalNumRows = 0;
         for (int i = 0; i < inData.length; i++) {
             if (inData[i].size() > POWERBI_MAX_ROWS_NONE_RETENTION) {
                 throw new InvalidSettingsException("Table " + (i + 1) + " contains more than "
                     + POWERBI_MAX_ROWS_NONE_RETENTION + " rows which is not supported by Power BI. Note that only "
                     + POWERBI_MAX_ROWS_PER_HOUR + " can be uploaded per hour.");
-            } else if (inData[i].size() > POWERBI_MAX_ROWS_PER_HOUR) {
-                setWarningMessage("Table " + (i + 1)
-                    + " contains more rows than can be uploaded to Power BI per hour. See log for details.");
-                LOGGER.warn("Table " + (i + 1) + " contains " + inData[i].size() + " rows "
-                    + "which is more than the maximum amount that can be uploaded to Power BI in one hour ("
-                    + POWERBI_MAX_ROWS_PER_HOUR + "). " + "The node will probably fail because of this. "
-                    + "Consider filtering the rows and sending only " + POWERBI_MAX_ROWS_PER_HOUR + " rows per hour.");
             }
+            totalNumRows += inData[i].size();
+        }
+        if (totalNumRows > POWERBI_MAX_ROWS_PER_HOUR) {
+            final String prefix = inData.length == 1 ? "The input table contains " : "The input tables contain ";
+            setWarningMessage(prefix + "more rows than can be uploaded to Power BI per hour. See log for details.");
+            LOGGER.warn(prefix + totalNumRows
+                + " rows in total which is more than the maximum amount that can be uploaded to Power BI in one hour ("
+                + POWERBI_MAX_ROWS_PER_HOUR + "). " + "The node will probably fail because of this. "
+                + "Consider filtering the rows and sending only " + POWERBI_MAX_ROWS_PER_HOUR + " rows per hour.");
         }
     }
 
