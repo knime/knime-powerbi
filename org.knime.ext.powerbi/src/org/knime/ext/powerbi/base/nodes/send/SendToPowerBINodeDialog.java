@@ -373,21 +373,28 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_settings.setAppendRows(m_appendToExisting.isSelected());
 
         // Dataset and table names
+        final String datasetNameCreate = m_datasetNameCreate.getText();
+        final String[] tableNamesCreate =
+            Arrays.stream(m_tableNamesCreate).map(JTextField::getText).toArray(String[]::new);
+
+        final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
+        final String datasetNameSelect = dataset != null ? dataset.m_name : "";
+        final String[] tableNamesSelect =
+            Arrays.stream(m_tableNamesSelect).map(c -> (String)c.getSelectedItem()).toArray(String[]::new);
+
         if (createNew) {
-            m_settings.setDatasetName(m_datasetNameCreate.getText());
-            final String[] tableNames =
-                Arrays.stream(m_tableNamesCreate).map(JTextField::getText).toArray(String[]::new);
-            m_settings.setTableNames(tableNames);
+            m_settings.setDatasetName(datasetNameCreate);
+            m_settings.setTableNames(tableNamesCreate);
+            m_settings.setDatasetNameDialog(datasetNameSelect);
+            m_settings.setTableNamesDialog(tableNamesSelect);
         } else {
-            final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
             if (dataset == null) {
                 throw new InvalidSettingsException("Please select a dataset.");
             }
-            m_settings.setDatasetName(dataset.m_name);
-
-            final String[] tableNames =
-                Arrays.stream(m_tableNamesSelect).map(c -> (String)c.getSelectedItem()).toArray(String[]::new);
-            m_settings.setTableNames(tableNames);
+            m_settings.setDatasetName(datasetNameSelect);
+            m_settings.setTableNames(tableNamesSelect);
+            m_settings.setDatasetNameDialog(datasetNameCreate);
+            m_settings.setTableNamesDialog(tableNamesCreate);
         }
 
         final CredentialsLocationType saveLocation = m_authPanel.getCredentialsSaveLocation();
@@ -433,26 +440,35 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_selectExisting.setSelected(!createNewDataset);
 
         // Dataset and table name
+        final String datasetNameCreate;
+        final String datasetNameSelect;
+        final String[] tableNamesCreate;
+        final String[] tableNamesSelect;
         if (createNewDataset) {
-            // Dataset name
-            m_datasetNameCreate.setText(m_settings.getDatasetName());
-            // Table names
-            final String[] tableNames = m_settings.getTableNames();
-            for (int i = 0; i < m_numberInputs && i < tableNames.length; i++) {
-                m_tableNamesCreate[i].setText(tableNames[i]);
-            }
+            datasetNameCreate = m_settings.getDatasetName();
+            datasetNameSelect = m_settings.getDatasetNameDialog();
+            tableNamesCreate = m_settings.getTableNames();
+            tableNamesSelect = m_settings.getTableNamesDialog();
         } else {
-            // Dataset name
-            final String datasetName = m_settings.getDatasetName();
-            final PowerBIDataset dataset = new PowerBIDataset(datasetName, null);
-            m_datasetNameSelect.addItem(dataset);
-            m_datasetNameSelect.setSelectedItem(dataset);
-            // Table names
-            final String[] tableNames = m_settings.getTableNames();
-            for (int i = 0; i < m_numberInputs && i < tableNames.length; i++) {
-                m_tableNamesSelect[i].addItem(tableNames[i]);
-                m_tableNamesSelect[i].setSelectedItem(tableNames[i]);
-            }
+            datasetNameCreate = m_settings.getDatasetNameDialog();
+            datasetNameSelect = m_settings.getDatasetName();
+            tableNamesCreate = m_settings.getTableNamesDialog();
+            tableNamesSelect = m_settings.getTableNames();
+        }
+
+        // Set create fields
+        m_datasetNameCreate.setText(datasetNameCreate);
+        for (int i = 0; i < m_numberInputs && i < tableNamesCreate.length; i++) {
+            m_tableNamesCreate[i].setText(tableNamesCreate[i]);
+        }
+
+        // Set select fields
+        final PowerBIDataset dataset = new PowerBIDataset(datasetNameSelect, null);
+        m_datasetNameSelect.addItem(dataset);
+        m_datasetNameSelect.setSelectedItem(dataset);
+        for (int i = 0; i < m_numberInputs && i < tableNamesSelect.length; i++) {
+            m_tableNamesSelect[i].addItem(tableNamesSelect[i]);
+            m_tableNamesSelect[i].setSelectedItem(tableNamesSelect[i]);
         }
 
         // Allow overwrite
