@@ -104,6 +104,10 @@ final class SendToPowerBINodeSettings {
 
     private static final String CFG_KEY_TABLE_NAMES = "table_name";
 
+    private static final String CFG_KEY_DATASET_NAME_DIALOG = "dataset_name_dialog";
+
+    private static final String CFG_KEY_TABLE_NAMES_DIALOG = "table_name_dialog";
+
     private static final String CFG_KEY_CREATE_NEW_DATASET = "create_new_dataset";
 
     private static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
@@ -129,6 +133,12 @@ final class SendToPowerBINodeSettings {
     private String m_datasetName = "";
 
     private String[] m_tableNames = {""};
+
+    /** The unused dataset name in the unselected dialog option */
+    private String m_datasetNameDialog = "";
+
+    /** The unused table names in the unselected dialog option */
+    private String[] m_tableNamesDialog = {""};
 
     private boolean m_createNewDataset = true;
 
@@ -209,6 +219,34 @@ final class SendToPowerBINodeSettings {
     }
 
     /**
+     * @return the datasetNameDialog
+     */
+    String getDatasetNameDialog() {
+        return m_datasetNameDialog;
+    }
+
+    /**
+     * @param datasetNameDialog the datasetNameDialog to set
+     */
+    void setDatasetNameDialog(final String datasetNameDialog) {
+        m_datasetNameDialog = datasetNameDialog;
+    }
+
+    /**
+     * @return the tableNamesDialog
+     */
+    String[] getTableNamesDialog() {
+        return m_tableNamesDialog;
+    }
+
+    /**
+     * @param tableNamesDialog the tableNamesDialog to set
+     */
+    void setTableNamesDialog(final String[] tableNamesDialog) {
+        m_tableNamesDialog = tableNamesDialog;
+    }
+
+    /**
      * @return the createNewDataset
      */
     boolean isCreateNewDataset() {
@@ -282,6 +320,8 @@ final class SendToPowerBINodeSettings {
         settings.addString(CFG_KEY_WORKSPACE, getWorkspace());
         settings.addString(CFG_KEY_DATASET_NAME, getDatasetName());
         settings.addStringArray(CFG_KEY_TABLE_NAMES, getTableNames());
+        settings.addString(CFG_KEY_DATASET_NAME_DIALOG, getDatasetNameDialog());
+        settings.addStringArray(CFG_KEY_TABLE_NAMES_DIALOG, getTableNamesDialog());
         settings.addBoolean(CFG_KEY_CREATE_NEW_DATASET, m_createNewDataset);
         settings.addBoolean(CFG_KEY_ALLOW_OVERWRITE, m_allowOverwrite);
         settings.addBoolean(CFG_KEY_APPEND_ROWS, m_appendRows);
@@ -327,6 +367,8 @@ final class SendToPowerBINodeSettings {
         setWorkspace(settings.getString(CFG_KEY_WORKSPACE));
         setDatasetName(settings.getString(CFG_KEY_DATASET_NAME));
         setTableNames(settings.getStringArray(CFG_KEY_TABLE_NAMES));
+        setDatasetNameDialog(settings.getString(CFG_KEY_DATASET_NAME_DIALOG, ""));
+        setTableNamesDialog(settings.getStringArray(CFG_KEY_TABLE_NAMES_DIALOG, ""));
 
         setCreateNewDataset(settings.getBoolean(CFG_KEY_CREATE_NEW_DATASET));
         setAllowOverwrite(settings.getBoolean(CFG_KEY_ALLOW_OVERWRITE));
