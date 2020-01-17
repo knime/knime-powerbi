@@ -110,67 +110,72 @@ public class AzureADAuthenticationUtils {
      * @throws AuthenticationException if the authentication fails because of any reason
      */
     @SuppressWarnings("resource") // The service and server are closed by a waiting thread
-    static Future<AzureADAuthentication> authenticate(final OAuth20Scope scope) throws AuthenticationException {
-        if (!OAUTH_IN_PROGRESS.getAndSet(true)) {
-
-            // The future authentication object
-            final AzureADAuthenticationFuture authFuture = new AzureADAuthenticationFuture();
-
-            // The OAuth20 service
-            final OAuth20Service service = new ServiceBuilder(CLIENT_ID) //
-                .defaultScope(scope.getScope()) //
-                .callback(OAUTH_CALLBACK_URL) //
-                .build(MicrosoftAzureActiveDirectory20Api.instance());
-
-            // Open the callback webserver
-            final Service callbackServer = Service.ignite().port(OAUTH_CALLBACK_PORT);
-            callbackServer.get(OAUTH_LISTENER_PATH, (request, resp) -> {
-                try {
-                    // Get the auth code
-                    final Optional<String> authCode = getAuthCodeFromRequest(request);
-
-                    if (authCode.isPresent()) {
-                        // Request a token
-                        final long requestTime = System.currentTimeMillis();
-                        final OAuth2AccessToken accessToken = service.getAccessToken(authCode.get());
-
-                        // Set the future result
-                        authFuture.setResult(new DefaultAzureADAuthentication(accessToken.getAccessToken(),
-                            requestTime + accessToken.getExpiresIn() * 1000, accessToken.getRefreshToken()));
-
-                        return OAUTH_SUCCESS_PAGE;
-                    } else {
-                        final String error = getErrorFromRequest(request);
-                        throw new AuthenticationException(error);
-                    }
-                } catch (final Throwable t) {
-                    authFuture.setFailed(t);
-                    return OAUTH_ERROR_PAGE + t.getMessage();
-                }
-            });
-
-            // Start a thread which closes the service and everything once the authentication is done
-            startClosingThread(authFuture, service, callbackServer);
-
-            // Start the authentication flow
-            final String authorizationUrl = service.getAuthorizationUrl();
-
-            // Open the browser and show the authentication site
-            try {
-                DesktopUtil.browse(new URL(authorizationUrl));
-            } catch (final MalformedURLException ex) {
-                authFuture.cancel(true);
-                throw new AuthenticationException("Malformed authentication URL: " + ex.getMessage(), ex);
-            }
-
-            return authFuture;
-        } else {
+    static synchronized Future<AzureADAuthentication> authenticate(final OAuth20Scope scope)
+        throws AuthenticationException {
+        if (OAUTH_IN_PROGRESS.get()) {
             // Another authentication is already in progress
             // We cannot do this in parallel because we open a webserver with a port
             throw new AuthenticaionInProgressException(
                 "A authentication with Azure Active Directory is already in progress. "
                     + "Wait until the other authentication process is done or cancel it.");
         }
+        // No authentication is in progress + No can start because this method is synchronized
+
+        // The future authentication object
+        final AzureADAuthenticationFuture authFuture = new AzureADAuthenticationFuture();
+
+        // The OAuth20 service
+        final OAuth20Service service = new ServiceBuilder(CLIENT_ID) //
+            .defaultScope(scope.getScope()) //
+            .callback(OAUTH_CALLBACK_URL) //
+            .build(MicrosoftAzureActiveDirectory20Api.instance());
+
+        // Open the callback webserver
+        final Service callbackServer = Service.ignite().port(OAUTH_CALLBACK_PORT);
+        callbackServer.get(OAUTH_LISTENER_PATH, (request, resp) -> {
+            try {
+                // Get the auth code
+                final Optional<String> authCode = getAuthCodeFromRequest(request);
+
+                if (authCode.isPresent()) {
+                    // Request a token
+                    final long requestTime = System.currentTimeMillis();
+                    final OAuth2AccessToken accessToken = service.getAccessToken(authCode.get());
+
+                    // Set the future result
+                    authFuture.setResult(new DefaultAzureADAuthentication(accessToken.getAccessToken(),
+                        requestTime + accessToken.getExpiresIn() * 1000, accessToken.getRefreshToken()));
+
+                    return OAUTH_SUCCESS_PAGE;
+                } else {
+                    final String error = getErrorFromRequest(request);
+                    throw new AuthenticationException(error);
+                }
+            } catch (final Throwable t) {
+                authFuture.setFailed(t);
+                return OAUTH_ERROR_PAGE + t.getMessage();
+            }
+        });
+
+        try {
+            // Start a thread which closes the service and everything once the authentication is done
+            startClosingThread(authFuture, service, callbackServer);
+            OAUTH_IN_PROGRESS.set(true);
+
+            // Start the authentication flow
+            final String authorizationUrl = service.getAuthorizationUrl();
+
+            // Open the browser and show the authentication site
+            DesktopUtil.browse(new URL(authorizationUrl));
+        } catch (final MalformedURLException ex) {
+            throw new AuthenticationException("Malformed authentication URL: " + ex.getMessage(), ex);
+        } finally {
+            // Always cancel if something goes wrong
+            authFuture.cancel(true);
+            // Note: OAUTH_IN_PROGRESS is set to false by the "closingThread" because the future is canceled
+        }
+
+        return authFuture;
     }
 
     /** Starts a thread which waits until the future is done and closes the service and stops the callback server */
