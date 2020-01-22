@@ -156,6 +156,11 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         addTab("Options", createOptionsPanel());
     }
 
+    @Override
+    public void onCancel() {
+        m_authenticator.cancel();
+    }
+
     private JPanel createOptionsPanel() {
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints gbc = createGBC();
