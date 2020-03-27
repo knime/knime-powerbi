@@ -131,9 +131,9 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JTextField[] m_tableNamesCreate;
 
-    private JComboBox<PowerBIDataset> m_datasetNameSelect;
+    private JComboBox<PowerBIElement> m_datasetNameSelect;
 
-    private JComboBox<String>[] m_tableNamesSelect;
+    private JComboBox<PowerBIElement>[] m_tableNamesSelect;
 
     private JRadioButton m_appendToExisting;
 
@@ -308,7 +308,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         panel.add(m_datasetNameSelect, gbc);
 
         @SuppressWarnings("unchecked")
-        final JComboBox<String>[] tableNamesAppendLocal = new JComboBox[m_numberInputs];
+        final JComboBox<PowerBIElement>[] tableNamesAppendLocal = new JComboBox[m_numberInputs];
         m_tableNamesSelect = tableNamesAppendLocal;
         for (int i = 0; i < m_numberInputs; i++) {
             gbc.gridy++;
@@ -373,26 +373,24 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         final String[] tableNamesCreate =
             Arrays.stream(m_tableNamesCreate).map(JTextField::getText).toArray(String[]::new);
 
-        final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
-        final String datasetNameSelect = dataset != null ? dataset.m_name : "";
-        final String[] tableNamesSelect =
-            Arrays.stream(m_tableNamesSelect).map(c -> (String)c.getSelectedItem()).toArray(String[]::new);
+        final PowerBIElement dataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
+        final String datasetNameSelect = dataset == null ? "" : dataset.getName();
+
+        final String[] tableNamesSelect = Arrays.stream(m_tableNamesSelect)
+            .map(c -> (PowerBIElement)c.getSelectedItem()).map(x -> x == null ? createPowerBITable("", false) : x)
+            .map(PowerBIElement::getName).toArray(String[]::new);
 
         if (createNew) {
-            m_settings.setTableNames(tableNamesCreate);
             m_settings.setDatasetName(datasetNameCreate);
-            if (dataset != null && !dataset.getShowPlaceholder()) {
-                m_settings.setTableNamesDialog(tableNamesSelect);
-                m_settings.setDatasetNameDialog(datasetNameSelect);
-            }
+            m_settings.setTableNames(tableNamesCreate);
+            m_settings.setDatasetNameDialog(datasetNameSelect);
+            m_settings.setTableNamesDialog(tableNamesSelect);
         } else {
             if (dataset == null) {
                 throw new InvalidSettingsException("Please select a dataset.");
             }
-            if (!dataset.getShowPlaceholder()) {
-                m_settings.setDatasetName(datasetNameSelect);
-                m_settings.setTableNames(tableNamesSelect);
-            }
+            m_settings.setDatasetName(datasetNameSelect);
+            m_settings.setTableNames(tableNamesSelect);
             m_settings.setDatasetNameDialog(datasetNameCreate);
             m_settings.setTableNamesDialog(tableNamesCreate);
         }
@@ -422,7 +420,6 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         // Authentication
         m_authPanel.setCredentialsSaveLocation(m_settings.getCredentialsSaveLocation());
         m_authPanel.setFilesystemLocation(m_settings.getFilesystemLocation());
-        m_authenticator.setAuthentication(m_settings.getAuthentication());
 
         // Workspace
         final String workspaceId = m_settings.getWorkspace();
@@ -439,20 +436,6 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_createNewButton.setSelected(createNewDataset);
         m_selectExisting.setSelected(!createNewDataset);
 
-        loadFieldSettings(createNewDataset, true);
-
-        // Append or refresh
-        final boolean appendRows = m_settings.isAppendRows();
-        m_appendToExisting.setSelected(appendRows);
-        m_refreshExisting.setSelected(!appendRows);
-
-        // Update which components are enabled
-        enableDisableComboboxes();
-    }
-
-    /** Loads the settings for the dropdowns again if authentication state changes to authenticated */
-    private void loadFieldSettings(final boolean createNewDataset, final boolean initialLoading) {
-        // Dataset and table name
         final String datasetNameCreate;
         final String datasetNameSelect;
         final String[] tableNamesCreate;
@@ -469,29 +452,40 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             tableNamesSelect = m_settings.getTableNames();
         }
 
-        //Only load those fields when opening the dialog for the first time
-        if (initialLoading) {
-            m_datasetNameCreate.setText(datasetNameCreate);
-            for (int i = 0; i < m_numberInputs && i < tableNamesCreate.length; i++) {
-                m_tableNamesCreate[i].setText(tableNamesCreate[i]);
-            }
+        m_datasetNameCreate.setText(datasetNameCreate);
+        for (int i = 0; i < m_numberInputs && i < tableNamesCreate.length; i++) {
+            m_tableNamesCreate[i].setText(tableNamesCreate[i]);
         }
 
-        final PowerBIDataset dataset;
-        //If not authenticated
-        if (m_authenticator.getAuthentication() == null) {
-            m_datasetNameSelect.removeAllItems();
-            dataset = new PowerBIDataset(datasetNameSelect, null, true);
-            setTableComboBoxesDefaultValues();
-        } else {
-            dataset = new PowerBIDataset(datasetNameSelect, null, false);
-            for (int i = 0; i < m_numberInputs && i < tableNamesSelect.length; i++) {
-                m_tableNamesSelect[i].addItem(tableNamesSelect[i]);
-                m_tableNamesSelect[i].setSelectedItem(tableNamesSelect[i]);
-            }
-        }
+        final PowerBIElement dataset = createPowerBIDataset(datasetNameSelect, null, true);
         m_datasetNameSelect.addItem(dataset);
         m_datasetNameSelect.setSelectedItem(dataset);
+
+        for (int i = 0; i < m_numberInputs && i < tableNamesSelect.length; i++) {
+            final PowerBIElement powerBITable;
+            if (!tableNamesSelect[0].equals("")) {
+                powerBITable = createPowerBITable(tableNamesSelect[i], true);
+
+            } else {
+                powerBITable = createPowerBITable(tableNamesSelect[i],
+                    m_authenticator.getState().equals(AuthenticatorState.NOT_AUTHENTICATED));
+            }
+            m_tableNamesSelect[i].addItem(powerBITable);
+            m_tableNamesSelect[i].setSelectedItem(powerBITable);
+        }
+
+        m_authenticator.setAuthentication(m_settings.getAuthentication());
+
+        // Allow overwrite
+        m_allowOverwrite.setSelected(m_settings.isAllowOverwrite());
+
+        // Append or refresh
+        final boolean appendRows = m_settings.isAppendRows();
+        m_appendToExisting.setSelected(appendRows);
+        m_refreshExisting.setSelected(!appendRows);
+
+        // Update which components are enabled
+        enableDisableComboboxes();
     }
 
     /* -------------------------------------- Handling changes ---------------------------- */
@@ -499,35 +493,52 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private void authenticationChanged(final AuthenticatorState s) {
         if (AuthenticatorState.AUTHENTICATED.equals(s)) {
             updateWorkspaceOptions();
-            loadFieldSettings(m_settings.isCreateNewDataset(), false);
+        } else if (AuthenticatorState.NOT_AUTHENTICATED.equals(s)) {
+            showDatasetAuthenticationInfo();
         }
         enableDisableComboboxes();
     }
 
-    /** Sets the default value of the comboboxes for the dataset and table to the default values */
-    private void setTableComboBoxesDefaultValues() {
-        String[] tableNames =
-            m_settings.isCreateNewDataset() ? m_settings.getTableNamesDialog() : m_settings.getTableNames();
+    /** Sets the authentication info for the dataset dropdown in case the user is not authenticated */
+    private void showDatasetAuthenticationInfo() {
 
-        for (int i = 0; i < tableNames.length; i++) {
-            //No settings available, create new array with
-            if (tableNames[0].equals("")) {
-                tableNames = new String[m_numberInputs];
-                tableNames[i] = "";
-            } else {
-                tableNames[i] += " ";
-            }
-            m_tableNamesSelect[i].addItem(tableNames[i] + TABLE_PLACEHOLDER);
-            m_tableNamesSelect[i].setSelectedItem(tableNames[i] + TABLE_PLACEHOLDER);
-        }
+        final PowerBIElement selectedDataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
+        final PowerBIElement dataset =
+            selectedDataset != null ? selectedDataset : createPowerBIDataset("", null, true);
+        dataset.setShowPlacerholder(true);
 
-        //If no settings saved for addtional added input ports fill up with placeholder only
-        if (tableNames.length != m_numberInputs) {
-            for (int i = tableNames.length; i < m_numberInputs; i++) {
-                m_tableNamesSelect[i].addItem(TABLE_PLACEHOLDER);
-                m_tableNamesSelect[i].setSelectedItem(TABLE_PLACEHOLDER);
-            }
+        m_datasetNameSelect.removeAllItems();
+        m_datasetNameSelect.addItem(dataset);
+        m_datasetNameSelect.setSelectedItem(dataset);
+
+        showTableAuthenticationInfo();
+    }
+
+    /** Sets the authentication info for the table dropdowns in case the user is not authenticated */
+    private void showTableAuthenticationInfo() {
+        //Get selected values
+        final PowerBIElement[] tableNamesSelect = Arrays.stream(m_tableNamesSelect)
+            .map(c -> (PowerBIElement)c.getSelectedItem()).toArray(PowerBIElement[]::new);
+
+        for (int i = 0; i < tableNamesSelect.length; i++) {
+            final PowerBIElement placeholder = tableNamesSelect[i] == null ? createPowerBITable("", true)
+                : createPowerBITable(tableNamesSelect[i].m_name, true);
+            m_tableNamesSelect[i].removeAllItems();
+            m_tableNamesSelect[i].addItem(placeholder);
+            m_tableNamesSelect[i].setSelectedItem(placeholder);
+
         }
+    }
+
+    /** Creates a PowerBI dataset element */
+    private static PowerBIElement createPowerBIDataset(final String name, final String identifier,
+        final boolean showPlaceholder) {
+        return new PowerBIElement(name, identifier, showPlaceholder, DATASET_PLACEHOLDER);
+    }
+
+    /** Creates a PowerBI table element */
+    private static PowerBIElement createPowerBITable(final String name, final boolean showPlaceholder) {
+        return new PowerBIElement(name, showPlaceholder, TABLE_PLACEHOLDER);
     }
 
     /** Enables or diables the create new fields and disables or enables the append fields */
@@ -548,7 +559,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
         // Append to existing dataset
         m_datasetNameSelect.setEnabled(enableDatasetSelect);
-        for (final JComboBox<String> tableNameAppend : m_tableNamesSelect) {
+        for (final JComboBox<PowerBIElement> tableNameAppend : m_tableNamesSelect) {
             tableNameAppend.setEnabled(enableDatasetSelect);
         }
         m_appendToExisting.setEnabled(!enableNewDataset);
@@ -578,7 +589,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
         final String workspaceId = workspace.getIdentifier();
         final AzureADAuthentication auth = m_authenticator.getAuthentication();
-        final DefaultSwingWorker<List<PowerBIDataset>> worker = new DefaultSwingWorker<>( //
+        final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableDatasets(auth, workspaceId), //
             this::setDatasetOptions, //
             "Updating the available datasets failed.");
@@ -592,7 +603,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             return;
         }
         final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
-        final PowerBIDataset dataset = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
+        final PowerBIElement dataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
         if (workspace == null || dataset == null || dataset.getIdentifier() == null) {
             // No dataset selected (or loaded from the settings)
             return;
@@ -627,14 +638,14 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Set the dataset options to the given argument (and reselect or select the default) */
-    private void setDatasetOptions(final List<PowerBIDataset> datasetNames) {
+    private void setDatasetOptions(final List<PowerBIElement> datasetNames) {
         // Get the selected value
-        final PowerBIDataset selected = (PowerBIDataset)m_datasetNameSelect.getSelectedItem();
+        final PowerBIElement selected = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
 
         // Update the options and reselect
         m_updatingDatasetOptions.set(true);
         m_datasetNameSelect.removeAllItems();
-        for (final PowerBIDataset d : datasetNames) {
+        for (final PowerBIElement d : datasetNames) {
             m_datasetNameSelect.addItem(d);
         }
         m_updatingDatasetOptions.set(false);
@@ -652,20 +663,22 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     /** Set the table options to the given argument (and reselect or select the default) */
     private void setTableOptions(final List<String> tableNames) {
         for (int i = 0; i < m_numberInputs; i++) {
-            final JComboBox<String> tableNameAppend = m_tableNamesSelect[i];
+            final JComboBox<PowerBIElement> tableNameAppend = m_tableNamesSelect[i];
             // Get the selected values
-            final String selected = (String)tableNameAppend.getSelectedItem();
+            final PowerBIElement selected = (PowerBIElement)tableNameAppend.getSelectedItem();
 
             // Update the options and reselect
             tableNameAppend.removeAllItems();
             for (final String t : tableNames) {
-                tableNameAppend.addItem(t);
+                tableNameAppend.addItem(createPowerBITable(t, false));
             }
             // Reselect
-            if (tableNames.contains(selected)) {
-                tableNameAppend.setSelectedItem(selected);
-            } else if (!tableNames.isEmpty()) {
-                tableNameAppend.setSelectedIndex(i % tableNames.size());
+            if (selected != null) {
+                if (tableNames.contains(selected.m_name)) {
+                    tableNameAppend.setSelectedItem(selected);
+                } else if (!tableNames.isEmpty()) {
+                    tableNameAppend.setSelectedIndex(i % tableNames.size());
+                }
             }
         }
     }
@@ -684,7 +697,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Call the REST API to get the available datasets */
-    private static List<PowerBIDataset> getAvailableDatasets(final AzureADAuthentication auth, final String workspaceId)
+    private static List<PowerBIElement> getAvailableDatasets(final AzureADAuthentication auth, final String workspaceId)
         throws PowerBIResponseException {
         final Datasets datasets;
         if (workspaceId.isEmpty()) {
@@ -693,7 +706,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         }
         return Arrays.stream(datasets.getValue()) //
-            .map(d -> new PowerBIDataset(d.getName(), d.getId(), false)) //
+            .map(d -> createPowerBIDataset(d.getName(), d.getId(), false)) //
             .collect(Collectors.toList());
     }
 
@@ -763,27 +776,35 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
     }
 
-    /** A Power BI dataset to use in the combobox (identified by the name) */
-    private static class PowerBIDataset {
+    /** A Power BI Element to use in the combobox for the dataset and the tables (identified by the name) */
+    private static class PowerBIElement {
 
         private final String m_name;
 
         private final String m_identifier;
 
-        private final boolean m_showPlaceholder;
+        private final String m_placeHolder;
 
-        public PowerBIDataset(final String name, final String identifier, final boolean showPlaceholder) {
+        private boolean m_showPlaceholder;
+
+        public PowerBIElement(final String name, final String identifier, final boolean showPlaceholder,
+            final String placeHolder) {
             m_name = name;
             m_identifier = identifier;
             m_showPlaceholder = showPlaceholder;
+            m_placeHolder = placeHolder;
+        }
+
+        public PowerBIElement(final String name, final boolean showPlaceholder, final String placeHolder) {
+            this(name, null, showPlaceholder, placeHolder);
         }
 
         @Override
         public boolean equals(final Object obj) {
-            if (!(obj instanceof PowerBIDataset)) {
+            if (!(obj instanceof PowerBIElement)) {
                 return false;
             }
-            final PowerBIDataset o = (PowerBIDataset)obj;
+            final PowerBIElement o = (PowerBIElement)obj;
             return Objects.equals(m_name, o.m_name);
         }
 
@@ -795,18 +816,22 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         @Override
         public String toString() {
             if (m_showPlaceholder) {
-                return m_name.equals("") ? DATASET_PLACEHOLDER : m_name + " " + DATASET_PLACEHOLDER;
+                return m_name.equals("") ? m_placeHolder : m_placeHolder + " Selected (" + m_name + ")";
             } else {
                 return m_name;
             }
+        }
+
+        public String getName() {
+            return m_name;
         }
 
         public String getIdentifier() {
             return m_identifier;
         }
 
-        public boolean getShowPlaceholder() {
-            return m_showPlaceholder;
+        public void setShowPlacerholder(final boolean showPlaceholder) {
+            m_showPlaceholder = showPlaceholder;
         }
     }
 
