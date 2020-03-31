@@ -816,7 +816,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         @Override
         public String toString() {
             if (m_showPlaceholder) {
-                return m_name.equals("") ? m_placeHolder : m_placeHolder + " Selected (" + m_name + ")";
+                return m_name.equals("") ? m_placeHolder : m_placeHolder + "   Selected: " + m_name;
             } else {
                 return m_name;
             }
