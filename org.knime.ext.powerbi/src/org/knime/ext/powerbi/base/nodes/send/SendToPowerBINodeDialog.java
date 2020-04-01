@@ -71,6 +71,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.border.TitledBorder;
 
 import org.knime.core.data.DataTableSpec;
@@ -80,6 +81,7 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
+import org.knime.core.node.util.SharedIcons;
 import org.knime.core.util.SwingWorkerWithContext;
 import org.knime.ext.azuread.auth.Authenticator.AuthenticatorState;
 import org.knime.ext.azuread.auth.AzureADAuthentication;
@@ -104,6 +106,11 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     static final String TABLE_PLACEHOLDER = "-- Authenticate to select table --";
 
     private static final PowerBIWorkspace DEFAULT_WORKSPACE = new PowerBIWorkspace("default", "");
+
+    private static final PowerBIElement NO_PUSH_DATASETS_PLACEHOLDER =
+        new PowerBIElement("", "no_push_datasets", true, "-- No push datasets available --");
+
+    private static final PowerBIElement NO_TABLES_PLACEHOLDER = new PowerBIElement("", true, "-- No tables available --");
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
@@ -138,6 +145,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private JRadioButton m_appendToExisting;
 
     private JRadioButton m_refreshExisting;
+
+    private JLabel m_onlyPushDatasets;
 
     public SendToPowerBINodeDialog(final int numberInputs) {
         m_numberInputs = numberInputs;
@@ -252,6 +261,12 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         gbc.gridx = 0;
         gbc.weightx = 1;
         gbc.gridwidth = 2;
+
+        // Nopush datasets info not visible by default
+        m_onlyPushDatasets = new JLabel("Only push datasets are being displayed.", SharedIcons.INFO.get(),
+            SwingConstants.LEFT);
+        m_onlyPushDatasets.setVisible(false);
+        panel.add(m_onlyPushDatasets, gbc);
 
         return panel;
     }
@@ -495,6 +510,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             updateWorkspaceOptions();
         } else if (AuthenticatorState.NOT_AUTHENTICATED.equals(s)) {
             showDatasetAuthenticationInfo();
+            m_onlyPushDatasets.setVisible(false);
         }
         enableDisableComboboxes();
     }
@@ -503,8 +519,9 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private void showDatasetAuthenticationInfo() {
 
         final PowerBIElement selectedDataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
-        final PowerBIElement dataset =
-            selectedDataset != null ? selectedDataset : createPowerBIDataset("", null, true);
+        final PowerBIElement dataset = selectedDataset != null && selectedDataset != NO_PUSH_DATASETS_PLACEHOLDER
+                ? selectedDataset : createPowerBIDataset("", null, true);
+
         dataset.setShowPlacerholder(true);
 
         m_datasetNameSelect.removeAllItems();
@@ -557,10 +574,13 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
         m_allowOverwrite.setEnabled(enableNewDataset);
 
+        //Check if authenticated, isCreatenew enabled and if the current selection is the NO_PUSH_DATASET_PLACEHOLDER
+        final PowerBIElement selectedItem = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
+        final boolean noPushDatasetsAvailable = selectedItem == NO_PUSH_DATASETS_PLACEHOLDER ? false : enableDatasetSelect ;
         // Append to existing dataset
-        m_datasetNameSelect.setEnabled(enableDatasetSelect);
+        m_datasetNameSelect.setEnabled(noPushDatasetsAvailable);
         for (final JComboBox<PowerBIElement> tableNameAppend : m_tableNamesSelect) {
-            tableNameAppend.setEnabled(enableDatasetSelect);
+            tableNameAppend.setEnabled(noPushDatasetsAvailable);
         }
         m_appendToExisting.setEnabled(!enableNewDataset);
         m_refreshExisting.setEnabled(!enableNewDataset);
@@ -593,6 +613,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             () -> getAvailableDatasets(auth, workspaceId), //
             this::setDatasetOptions, //
             "Updating the available datasets failed.");
+
         worker.execute();
     }
 
@@ -604,14 +625,16 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
         final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
         final PowerBIElement dataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
+
         if (workspace == null || dataset == null || dataset.getIdentifier() == null) {
             // No dataset selected (or loaded from the settings)
             return;
         }
+
         final String workspaceId = workspace.getIdentifier();
         final String datasetId = dataset.getIdentifier();
         final AzureADAuthentication auth = m_authenticator.getAuthentication();
-        final DefaultSwingWorker<List<String>> worker = new DefaultSwingWorker<>( //
+        final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableTables(auth, workspaceId, datasetId), //
             this::setTableOptions, //
             "Updating the available tables failed.");
@@ -661,7 +684,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Set the table options to the given argument (and reselect or select the default) */
-    private void setTableOptions(final List<String> tableNames) {
+    private void setTableOptions(final List<PowerBIElement> tableNames) {
         for (int i = 0; i < m_numberInputs; i++) {
             final JComboBox<PowerBIElement> tableNameAppend = m_tableNamesSelect[i];
             // Get the selected values
@@ -669,18 +692,19 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
             // Update the options and reselect
             tableNameAppend.removeAllItems();
-            for (final String t : tableNames) {
-                tableNameAppend.addItem(createPowerBITable(t, false));
+            for (final PowerBIElement t : tableNames) {
+                tableNameAppend.addItem(t);
             }
             // Reselect
             if (selected != null) {
-                if (tableNames.contains(selected.m_name)) {
+                if (tableNames.contains(selected)) {
                     tableNameAppend.setSelectedItem(selected);
                 } else if (!tableNames.isEmpty()) {
                     tableNameAppend.setSelectedIndex(i % tableNames.size());
                 }
             }
         }
+        enableDisableComboboxes();
     }
 
     /* ------------------------------------------------ REST API helpers ------------------------ */
@@ -697,7 +721,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Call the REST API to get the available datasets */
-    private static List<PowerBIElement> getAvailableDatasets(final AzureADAuthentication auth, final String workspaceId)
+    private List<PowerBIElement> getAvailableDatasets(final AzureADAuthentication auth, final String workspaceId)
         throws PowerBIResponseException {
         final Datasets datasets;
         if (workspaceId.isEmpty()) {
@@ -705,21 +729,36 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         } else {
             datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         }
-        return Arrays.stream(datasets.getValue()) //
+
+        List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(d -> d.isAddRowsAPIEnabled()) //
             .map(d -> createPowerBIDataset(d.getName(), d.getId(), false)) //
             .collect(Collectors.toList());
+
+        //Only enable if push datasets and non push datasets available
+<<<<<<< Updated upstream
+        m_noPushDatasets.setVisible(!Arrays.stream(datasets.getValue()).allMatch(d -> d.isAddRowsAPIEnabled()));
+=======
+        m_onlyPushDatasets.setVisible(datasets.getValue().length > powerBIDatasets.size());
+>>>>>>> Stashed changes
+
+        return powerBIDatasets.isEmpty() ? Collections.singletonList(NO_PUSH_DATASETS_PLACEHOLDER) : powerBIDatasets;
     }
 
-    private static List<String> getAvailableTables(final AzureADAuthentication auth, final String workspaceId,
+    private static List<PowerBIElement> getAvailableTables(final AzureADAuthentication auth, final String workspaceId,
         final String datasetId) throws PowerBIResponseException {
         final Tables tables;
+
+        if (datasetId.equals(NO_PUSH_DATASETS_PLACEHOLDER.getIdentifier())) {
+            return Collections.singletonList(NO_TABLES_PLACEHOLDER);
+        }
         if (workspaceId.isEmpty()) {
             tables = PowerBIRestAPIUtils.getTables(auth, datasetId);
         } else {
             tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
         }
+
         return Arrays.stream(tables.getValue()) //
-            .map(Table::getName) //
+            .map(Table::getName).map(x -> createPowerBITable(x, false)) //
             .collect(Collectors.toList());
     }
 
