@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -105,7 +106,9 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     static final String TABLE_PLACEHOLDER = "-- Authenticate to select table --";
 
-    private static final PowerBIWorkspace DEFAULT_WORKSPACE = new PowerBIWorkspace("default", "");
+    static final String WORKSPACE_PLACEHOLDER = "-- Authenticate to select workspace --";
+
+    private static final PowerBIElement DEFAULT_WORKSPACE = createPowerBIWorkspace("default", "", false);
 
     private static final PowerBIElement NO_PUSH_DATASETS_PLACEHOLDER =
         new PowerBIElement("", "no_push_datasets", true, "-- No push datasets available --");
@@ -124,7 +127,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private final AtomicBoolean m_updatingDatasetOptions;
 
-    private JComboBox<PowerBIWorkspace> m_workspace;
+    private JComboBox<PowerBIElement> m_workspace;
 
     private OAuthSettingsPanel m_authPanel;
 
@@ -218,7 +221,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         panel.add(new JLabel("Workspace"), gbc);
         gbc.gridx++;
         gbc.weightx = 5;
-        m_workspace = new JComboBox<>(new PowerBIWorkspace[]{DEFAULT_WORKSPACE});
+        m_workspace = new JComboBox<>(new PowerBIElement[]{DEFAULT_WORKSPACE});
         m_workspace.setEnabled(false);
         m_workspace.addActionListener(e -> updateDatasetOptions());
         panel.add(m_workspace, gbc);
@@ -375,7 +378,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_settings.setAuthentication(m_authenticator.getAuthentication());
 
         // Workspace
-        m_settings.setWorkspace(((PowerBIWorkspace)m_workspace.getSelectedItem()).getIdentifier());
+        m_settings.setWorkspace(((PowerBIElement)m_workspace.getSelectedItem()).getIdentifier());
 
         // Create new or append and overwrite
         final boolean createNew = m_createNewButton.isSelected();
@@ -441,7 +444,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         if (workspaceId.isEmpty()) {
             m_workspace.setSelectedItem(DEFAULT_WORKSPACE);
         } else {
-            final PowerBIWorkspace selectedWorkspace = new PowerBIWorkspace(workspaceId, workspaceId);
+            final PowerBIElement selectedWorkspace = createPowerBIWorkspace(workspaceId, workspaceId, false);
             m_workspace.addItem(selectedWorkspace);
             m_workspace.setSelectedItem(selectedWorkspace);
         }
@@ -508,11 +511,23 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private void authenticationChanged(final AuthenticatorState s) {
         if (AuthenticatorState.AUTHENTICATED.equals(s)) {
             updateWorkspaceOptions();
+            DEFAULT_WORKSPACE.setShowPlacerholder(false);
         } else if (AuthenticatorState.NOT_AUTHENTICATED.equals(s)) {
+            showWorkspaceAuthenticationInfo();
             showDatasetAuthenticationInfo();
             m_onlyPushDatasets.setVisible(false);
         }
         enableDisableComboboxes();
+    }
+
+    /** Sets the authentication info for the workspace dropdown in case the user is not authenticated */
+    private void showWorkspaceAuthenticationInfo() {
+        final PowerBIElement selecetedWorkspace = (PowerBIElement)m_workspace.getSelectedItem();
+        selecetedWorkspace.setShowPlacerholder(true);
+
+        m_workspace.removeAllItems();
+        m_workspace.addItem(selecetedWorkspace);
+        m_workspace.setSelectedItem(selecetedWorkspace);
     }
 
     /** Sets the authentication info for the dataset dropdown in case the user is not authenticated */
@@ -521,7 +536,6 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         final PowerBIElement selectedDataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
         final PowerBIElement dataset = selectedDataset != null && selectedDataset != NO_PUSH_DATASETS_PLACEHOLDER
                 ? selectedDataset : createPowerBIDataset("", null, true);
-
         dataset.setShowPlacerholder(true);
 
         m_datasetNameSelect.removeAllItems();
@@ -558,11 +572,18 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         return new PowerBIElement(name, showPlaceholder, TABLE_PLACEHOLDER);
     }
 
+    /** Creates a PowerBI table element */
+    private static PowerBIElement createPowerBIWorkspace(final String name, final String identifier, final boolean showPlaceholder) {
+        return new PowerBIElement(name, identifier, showPlaceholder, WORKSPACE_PLACEHOLDER);
+    }
+
     /** Enables or diables the create new fields and disables or enables the append fields */
     private void enableDisableComboboxes() {
+        final PowerBIElement selectedItem = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
+        final boolean pushDatasetsAvailable = selectedItem != NO_PUSH_DATASETS_PLACEHOLDER;
         final boolean authenticated = AuthenticatorState.AUTHENTICATED.equals(m_authenticator.getState());
         final boolean enableNewDataset = m_createNewButton.isSelected();
-        final boolean enableDatasetSelect = !enableNewDataset && authenticated;
+        final boolean enableDatasetSelect = !enableNewDataset && authenticated && pushDatasetsAvailable;
 
         // Workspace selection
         m_workspace.setEnabled(authenticated);
@@ -574,13 +595,11 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
         m_allowOverwrite.setEnabled(enableNewDataset);
 
-        //Check if authenticated, isCreatenew enabled and if the current selection is the NO_PUSH_DATASET_PLACEHOLDER
-        final PowerBIElement selectedItem = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
-        final boolean noPushDatasetsAvailable = selectedItem == NO_PUSH_DATASETS_PLACEHOLDER ? false : enableDatasetSelect ;
+
         // Append to existing dataset
-        m_datasetNameSelect.setEnabled(noPushDatasetsAvailable);
+        m_datasetNameSelect.setEnabled(enableDatasetSelect);
         for (final JComboBox<PowerBIElement> tableNameAppend : m_tableNamesSelect) {
-            tableNameAppend.setEnabled(noPushDatasetsAvailable);
+            tableNameAppend.setEnabled(enableDatasetSelect);
         }
         m_appendToExisting.setEnabled(!enableNewDataset);
         m_refreshExisting.setEnabled(!enableNewDataset);
@@ -589,7 +608,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     /** Start a thread to update the workspace options */
     private void updateWorkspaceOptions() {
         final AzureADAuthentication auth = m_authenticator.getAuthentication();
-        final DefaultSwingWorker<List<PowerBIWorkspace>> worker = new DefaultSwingWorker<>( //
+        final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableWorkspaces(auth), //
             this::setWorkspaceOptions, //
             "Updating the available datasets failed.");
@@ -602,7 +621,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             // Either updating the workspaces or not authenticated
             return;
         }
-        final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
+        final PowerBIElement workspace = (PowerBIElement)m_workspace.getSelectedItem();
         if (workspace == null) {
             // No workspace selected
             return;
@@ -623,7 +642,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             // Either updating the datasets or not authenticated
             return;
         }
-        final PowerBIWorkspace workspace = (PowerBIWorkspace)m_workspace.getSelectedItem();
+        final PowerBIElement workspace = (PowerBIElement)m_workspace.getSelectedItem();
         final PowerBIElement dataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
 
         if (workspace == null || dataset == null || dataset.getIdentifier() == null) {
@@ -642,17 +661,22 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Set the workspace options to the given argument (and reselect or select the default) */
-    private void setWorkspaceOptions(final List<PowerBIWorkspace> workspaceNames) {
+    private void setWorkspaceOptions(final List<PowerBIElement> workspaceNames) {
         // Get the selected value (or default)
-        PowerBIWorkspace selected = (PowerBIWorkspace)m_workspace.getSelectedItem();
-        if (!workspaceNames.contains(selected)) {
+        PowerBIElement selected = (PowerBIElement)m_workspace.getSelectedItem();
+        final String identifier = selected.getIdentifier();
+        final Optional<PowerBIElement> workspace =
+            workspaceNames.stream().filter(id -> id.getIdentifier().equals(identifier)).findFirst();
+        if (!workspace.isPresent()) {
             selected = DEFAULT_WORKSPACE;
+        } else {
+            selected = workspace.get();
         }
 
         // Update the options and reselect
         m_updatingWorkspaceOptions.set(true);
         m_workspace.removeAllItems();
-        for (final PowerBIWorkspace w : workspaceNames) {
+        for (final PowerBIElement w : workspaceNames) {
             m_workspace.addItem(w);
         }
         m_updatingWorkspaceOptions.set(false);
@@ -704,17 +728,18 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
                 }
             }
         }
+        //This is added in case there are no push datasets available to disable the dataset / table dropdowns
         enableDisableComboboxes();
     }
 
     /* ------------------------------------------------ REST API helpers ------------------------ */
 
     /** Call the REST API to get the available workspaces */
-    private static List<PowerBIWorkspace> getAvailableWorkspaces(final AzureADAuthentication auth)
+    private static List<PowerBIElement> getAvailableWorkspaces(final AzureADAuthentication auth)
         throws PowerBIResponseException {
         final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
-        final List<PowerBIWorkspace> workspaces = Arrays.stream(groups.getValue()) //
-            .map(g -> new PowerBIWorkspace(g.getName(), g.getId())) //
+        final List<PowerBIElement> workspaces = Arrays.stream(groups.getValue()) //
+            .map(g -> createPowerBIWorkspace(g.getName(), g.getId(), false)) //
             .collect(Collectors.toCollection(ArrayList::new));
         workspaces.add(DEFAULT_WORKSPACE);
         return workspaces;
@@ -735,11 +760,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             .collect(Collectors.toList());
 
         //Only enable if push datasets and non push datasets available
-<<<<<<< Updated upstream
-        m_noPushDatasets.setVisible(!Arrays.stream(datasets.getValue()).allMatch(d -> d.isAddRowsAPIEnabled()));
-=======
         m_onlyPushDatasets.setVisible(datasets.getValue().length > powerBIDatasets.size());
->>>>>>> Stashed changes
 
         return powerBIDatasets.isEmpty() ? Collections.singletonList(NO_PUSH_DATASETS_PLACEHOLDER) : powerBIDatasets;
     }
@@ -779,43 +800,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         return BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), title);
     }
 
-    /** A Power BI workspace to use in the combobox */
-    private static class PowerBIWorkspace {
-
-        private final String m_name;
-
-        private final String m_identifier;
-
-        public PowerBIWorkspace(final String name, final String identifier) {
-            m_name = name;
-            m_identifier = identifier;
-        }
-
-        @Override
-        public boolean equals(final Object obj) {
-            if (!(obj instanceof PowerBIWorkspace)) {
-                return false;
-            }
-            final PowerBIWorkspace o = (PowerBIWorkspace)obj;
-            return Objects.equals(m_identifier, o.m_identifier);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(m_identifier);
-        }
-
-        @Override
-        public String toString() {
-            return m_name;
-        }
-
-        public String getIdentifier() {
-            return m_identifier;
-        }
-    }
-
-    /** A Power BI Element to use in the combobox for the dataset and the tables (identified by the name) */
+    /** A Power BI Element to use in the combobox for the dataset, workspace and the tables (identified by the name) */
     private static class PowerBIElement {
 
         private final String m_name;
