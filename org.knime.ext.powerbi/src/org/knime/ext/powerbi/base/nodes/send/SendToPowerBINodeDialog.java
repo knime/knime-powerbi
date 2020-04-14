@@ -165,6 +165,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     @Override
     public void onCancel() {
         m_authenticator.cancel();
+        m_authenticator.clearAuthentication();
     }
 
     private JPanel createOptionsPanel() {
@@ -439,12 +440,14 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         m_authPanel.setCredentialsSaveLocation(m_settings.getCredentialsSaveLocation());
         m_authPanel.setFilesystemLocation(m_settings.getFilesystemLocation());
 
+        m_authenticator.setAuthentication(m_settings.getAuthentication());
+
         // Workspace
         final String workspaceId = m_settings.getWorkspace();
         if (workspaceId.isEmpty()) {
             m_workspace.setSelectedItem(DEFAULT_WORKSPACE);
         } else {
-            final PowerBIElement selectedWorkspace = createPowerBIWorkspace(workspaceId, workspaceId, false);
+            final PowerBIElement selectedWorkspace = createPowerBIWorkspace(workspaceId, workspaceId, true);
             m_workspace.addItem(selectedWorkspace);
             m_workspace.setSelectedItem(selectedWorkspace);
         }
@@ -491,8 +494,6 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             m_tableNamesSelect[i].addItem(powerBITable);
             m_tableNamesSelect[i].setSelectedItem(powerBITable);
         }
-
-        m_authenticator.setAuthentication(m_settings.getAuthentication());
 
         // Allow overwrite
         m_allowOverwrite.setSelected(m_settings.isAllowOverwrite());
