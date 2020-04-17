@@ -113,7 +113,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     private static final PowerBIElement NO_PUSH_DATASETS_PLACEHOLDER =
         new PowerBIElement("", "no_push_datasets", true, "-- No push datasets available --");
 
-    private static final PowerBIElement NO_TABLES_PLACEHOLDER = new PowerBIElement("", true, "-- No tables available --");
+    private static final PowerBIElement NO_TABLES_PLACEHOLDER =
+        new PowerBIElement("", true, "-- No tables available --");
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel.class);
 
@@ -149,7 +150,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     private JRadioButton m_refreshExisting;
 
-    private JLabel m_onlyPushDatasets;
+    private JLabel m_workspaceInfo;
 
     public SendToPowerBINodeDialog(final int numberInputs) {
         m_numberInputs = numberInputs;
@@ -267,10 +268,10 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         gbc.gridwidth = 2;
 
         // Nopush datasets info not visible by default
-        m_onlyPushDatasets = new JLabel("Only push datasets are being displayed.", SharedIcons.INFO.get(),
-            SwingConstants.LEFT);
-        m_onlyPushDatasets.setVisible(false);
-        panel.add(m_onlyPushDatasets, gbc);
+        m_workspaceInfo = new JLabel("", SharedIcons.INFO.get(), SwingConstants.LEFT);
+
+        m_workspaceInfo.setVisible(false);
+        panel.add(m_workspaceInfo, gbc);
 
         return panel;
     }
@@ -516,7 +517,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         } else if (AuthenticatorState.NOT_AUTHENTICATED.equals(s)) {
             showWorkspaceAuthenticationInfo();
             showDatasetAuthenticationInfo();
-            m_onlyPushDatasets.setVisible(false);
+            m_workspaceInfo.setVisible(false);
         }
         enableDisableComboboxes();
     }
@@ -536,7 +537,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
         final PowerBIElement selectedDataset = (PowerBIElement)m_datasetNameSelect.getSelectedItem();
         final PowerBIElement dataset = selectedDataset != null && selectedDataset != NO_PUSH_DATASETS_PLACEHOLDER
-                ? selectedDataset : createPowerBIDataset("", null, true);
+            ? selectedDataset : createPowerBIDataset("", null, true);
         dataset.setShowPlacerholder(true);
 
         m_datasetNameSelect.removeAllItems();
@@ -574,7 +575,8 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Creates a PowerBI table element */
-    private static PowerBIElement createPowerBIWorkspace(final String name, final String identifier, final boolean showPlaceholder) {
+    private static PowerBIElement createPowerBIWorkspace(final String name, final String identifier,
+        final boolean showPlaceholder) {
         return new PowerBIElement(name, identifier, showPlaceholder, WORKSPACE_PLACEHOLDER);
     }
 
@@ -595,7 +597,6 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             tableNameCreate.setEnabled(enableNewDataset);
         }
         m_allowOverwrite.setEnabled(enableNewDataset);
-
 
         // Append to existing dataset
         m_datasetNameSelect.setEnabled(enableDatasetSelect);
@@ -756,14 +757,27 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         }
 
-        List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(d -> d.isAddRowsAPIEnabled()) //
+        List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(d -> d.isAddRowsAPIEnabled())//
             .map(d -> createPowerBIDataset(d.getName(), d.getId(), false)) //
             .collect(Collectors.toList());
 
-        //Only enable if push datasets and non push datasets available
-        m_onlyPushDatasets.setVisible(datasets.getValue().length > powerBIDatasets.size());
+        showWorkspaceInfo(datasets.getValue().length, powerBIDatasets.size());
 
         return powerBIDatasets.isEmpty() ? Collections.singletonList(NO_PUSH_DATASETS_PLACEHOLDER) : powerBIDatasets;
+    }
+
+    /** Enables the workspaceInfo JLabel depending if no datasets available or non push datasets */
+    private void showWorkspaceInfo(final int datasetsSize, final int powerBIDatasetsSize) {
+        //Only enable if push datasets and non push datasets available or if workspace is empty
+        final boolean workspaceIsEmpty = datasetsSize == 0;
+        final boolean containsNonPushDataSets = datasetsSize > powerBIDatasetsSize;
+        m_workspaceInfo.setVisible(containsNonPushDataSets || workspaceIsEmpty);
+
+        if (workspaceIsEmpty) {
+            m_workspaceInfo.setText("Selected workspace does not contain any datasets.");
+        } else if (containsNonPushDataSets) {
+            m_workspaceInfo.setText("Only push datasets are being displayed.");
+        }
     }
 
     private static List<PowerBIElement> getAvailableTables(final AzureADAuthentication auth, final String workspaceId,
