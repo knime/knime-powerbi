@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="org.knime.features.ext.powerbi" version="0.0.0">
+       <category name="knime-powerbi" />
+   </feature>
+   <feature id="org.knime.features.ext.powerbi.source" version="0.0.0">
+       <category name="knime-powerbi" />
+   </feature>
+
+   <category-def name="knime-powerbi" label="Build artifacts from knime-powerbi">
+       <description>Build artifacts from knime-powerbi</description>
+   </category-def>
+</site>
