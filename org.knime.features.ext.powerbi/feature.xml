@@ -728,6 +728,13 @@ propagated with or for interoperation with KNIME.
    </license>
 
    <plugin
+         id="org.knime.ext.azuread"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
          id="org.knime.ext.powerbi"
          download-size="0"
          install-size="0"
