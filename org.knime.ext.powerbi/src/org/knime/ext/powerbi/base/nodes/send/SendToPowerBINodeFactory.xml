@@ -69,9 +69,9 @@
 				href="https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations">documentation</a>
 			.
 		</intro>
-		<tab name="Authenticaion">
+		<tab name="Authentication">
 			<option name="Authenticate">
-				Press this button to authentication with Power BI.
+				Press this button to authenticate with Power BI.
 				A page will be opened in your browser, which will ask you to sign in
 				to your Microsoft account. Once you are logged in, you will be asked
 				to accept the permission requests of the KNIME Analytics Platform
