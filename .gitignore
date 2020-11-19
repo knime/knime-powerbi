@@ -1,9 +1,8 @@
 */bin/
 target/
 */build/
-.flattened-pom.xml
-org.knime.ext.azuread/knime-azuread.jar
-org.knime.ext.powerbi/knime-powerbi.jar
-
+**/.flattened-pom.xml
+*/*.jar
 *.pyc*
 **/.pydevproject
+**/CHANGELOG.md
