@@ -10,6 +10,7 @@ Require-Bundle: org.knime.base;bundle-version="[4.2.0,5.0.0)",
  com.github.scribejava.apis;bundle-version="[6.9.0,7.0.0)",
  com.github.scribejava.core;bundle-version="[6.9.0,7.0.0)",
  com.google.guava;bundle-version="[19.0.0,20.0.0)"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-RequiredExecutionEnvironment: JavaSE-11
 Bundle-ActivationPolicy: lazy
 Export-Package: org.knime.ext.azuread.auth
+Automatic-Module-Name: org.knime.ext.azuread
