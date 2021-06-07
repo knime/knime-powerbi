@@ -87,6 +87,8 @@ import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
 
+import com.google.gson.Gson;
+
 /**
  * Send to Power BI node model.
  *
@@ -94,6 +96,8 @@ import org.knime.ext.powerbi.core.rest.bindings.Tables;
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  */
 final class SendToPowerBINodeModel extends NodeModel {
+
+    private static final Gson GSON = new Gson();
 
     private static final double PROGRESS_PREPARE = 0.3;
 
@@ -339,15 +343,16 @@ final class SendToPowerBINodeModel extends NodeModel {
         return columns.toArray(new Column[0]);
     }
 
-    /** Get a map of compatible columns and their index in the input table */
+    /** Get a map of compatible columns (as JSON strings) and their index in the input table */
     private Map<String, Integer> getColumnIndexMap(final DataTableSpec tableSpec) {
         final Map<String, Integer> columns = new HashMap<>();
-        final List<String> incompatibleColumns = new ArrayList<String>();
+        final List<String> incompatibleColumns = new ArrayList<>();
         boolean hasIncompatibleColumns = false;
         for (int i = 0; i < tableSpec.getNumColumns(); i++) {
             final DataColumnSpec columnSpec = tableSpec.getColumnSpec(i);
             if (PowerBIDataTypeUtils.powerBITypeForKNIMEType(columnSpec.getType()).isPresent()) {
-                columns.put(tableSpec.getColumnNames()[i], i);
+                final String columnName = GSON.toJson(tableSpec.getColumnNames()[i]);
+                columns.put(columnName, i);
             } else {
                 hasIncompatibleColumns = true;
                 incompatibleColumns.add(columnSpec.getName());
@@ -411,7 +416,7 @@ final class SendToPowerBINodeModel extends NodeModel {
     }
 
     /** A builder that takes KNIME rows and adds them to a JSON string */
-    private static class RowsBuilder {
+    private static final class RowsBuilder {
 
         private static final String ROWS_JSON_START = "{\"rows\":[";
 
@@ -435,7 +440,10 @@ final class SendToPowerBINodeModel extends NodeModel {
                 final Optional<String> value =
                     PowerBIDataTypeUtils.powerBIValueForKNIMEValue(row.getCell(colNameIndex.getValue()));
                 if (value.isPresent()) {
-                    m_builder.append((firstCol ? "\"" : ",\"") + colNameIndex.getKey() + "\":");
+                    if (!firstCol) {
+                        m_builder.append(",");
+                    }
+                    m_builder.append(colNameIndex.getKey() + ":");
                     m_builder.append(value.get());
                     firstCol = false;
                 }
