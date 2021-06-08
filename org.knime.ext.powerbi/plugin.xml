@@ -8,17 +8,17 @@
             level-id="powerbi"
             locked="true"
             name="Microsoft Power BI"
-            path="/labs/">
+            path="/toolintegration">
       </category>
    </extension>
    <extension point="org.knime.workbench.repository.nodes">
       <node
-            category-path="/labs/powerbi"
+            category-path="/toolintegration/powerbi"
             deprecated="true"
             factory-class="org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeFactory">
       </node>
       <node
-            category-path="/labs/powerbi"
+            category-path="/toolintegration/powerbi"
             deprecated="false"
             factory-class="org.knime.ext.powerbi.base.nodes.send2.SendToPowerBINodeFactory2">
       </node>
