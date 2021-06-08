@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<knimeNode icon="./send_to_power_bi.png" type="Sink"
+	xmlns="http://knime.org/node/v4.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+	<name>Send to Power BI</name>
+	<shortDescription>Send a table to Microsoft Power BI.</shortDescription>
+	<fullDescription>
+		<intro>
+			This node sends the input table to Microsoft Power BI.
+			<p />
+			The node only
+			uploads columns that are supported by Power BI. Other
+			columns are
+			ignored. The supported types are
+			<i>String</i>
+			,
+			<i>Number (integer)</i>
+			,
+			<i>Number (long)</i>
+			,
+			<i>Number (double)</i>
+			,
+			<i>Boolean value</i>
+			,
+			<i>Local Date</i>
+			and
+			<i>Local Date Time</i>
+			.
+			<p />
+			The node uploads rows in chunks to Microsoft Power BI. If the node is
+			canceled, the already uploaded rows will remain in the Power BI
+			dataset.
+			<p />
+			Use the "Microsoft Authentication" node to connect to your Microsoft account.
+			The KNIME
+			Analytics Platform Azure Application needs the following
+			permissions for this node:
+			<ul>
+				<li>
+					<b>View all datasets</b>
+					: Needed to check if a dataset already exists in your Power BI
+					workspace.
+				</li>
+				<li>
+					<b>Read and write all datasets</b>
+					: Needed to upload a table to a Power BI dataset in your workspace.
+				</li>
+				<li>
+					<b>View all workspaces</b>
+					: Needed to get the identifier of the selected Power BI workspace.
+				</li>
+				<li>
+					<b>Maintain access to data you have given it access to</b>
+					: Needed to access the Power BI API during the node execution
+					without asking you to log in again.
+				</li>
+			</ul>
+			<b>Note:</b>
+			The Power BI REST API has some limitations in terms of the size of a
+			dataset and the number of rows that can be shipped per hour. For more
+			information visit the
+			<a
+				href="https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations">documentation</a>
+			.
+		</intro>
+		<tab name="Settings">
+			<option name="Workspace">
+				Select the workspace to use. Select "default" to use the default
+				workspace which is called "My workspace" in the Power BI user
+				interface.
+				<br />
+				<b>NOTE:</b>
+				To see the workspace options you have to be authenticated.
+			</option>
+			<option name="Create new Dataset">
+				Select this option to create a new dataset in the selected Power BI workspace.
+			</option>
+			<option name="Select existing Dataset">
+				Select this option to append the input tables to an existing dataset
+				or to overwrite all rows of a table of an existing dataset.
+				Note that the dataset has to be a
+				<a
+					href="https://docs.microsoft.com/en-us/power-bi/service-real-time-streaming#types-of-real-time-datasets">"Push dataset"</a>
+				for this option to work.
+			</option>
+			<option name="Dataset name">
+				The name of the dataset to create.
+			</option>
+			<option name="Table name">
+				The name of the table in the dataset to upload. If multiple tables are
+				uploaded a name has to be configured for each table and the names have
+				to be unique.
+			</option>
+			<option name="Delete and create new if dataset exists">
+				Select this option to delete a dataset with the same name if one exists
+				before creating the new dataset. If a dataset with the configured name
+				exists but this option is not selected the node will fail.
+				<br />
+				<b>NOTE: All reports and dashboard tiles containing data from the
+					dataset will also be deleted.
+				</b>
+			</option>
+			<option name="Append/Overwrite rows">
+				Select if the input tables should be appended to the existing tables or
+				if all rows of the exiting table should be deleted and overwritten by
+				the input rows.
+			</option>
+		</tab>
+	</fullDescription>
+	<ports>
+		<inPort index="0" name="Microsoft Connection">
+			Microsoft Connection that provides user authentication.
+		</inPort>
+		<inPort index="1" name="Table">
+			Data to be send to Power BI.
+		</inPort>
+		<dynInPort insert-before="2" group-identifier="input" name="Additional input table">
+			Additional data to be send to your data set.
+		</dynInPort>
+ </ports>
+</knimeNode>

@@ -17,5 +17,10 @@
             deprecated="false"
             factory-class="org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeFactory">
       </node>
+      <node
+            category-path="/labs/powerbi"
+            deprecated="false"
+            factory-class="org.knime.ext.powerbi.base.nodes.send2.SendToPowerBINodeFactory2">
+      </node>
    </extension>
 </plugin>
