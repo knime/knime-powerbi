@@ -391,8 +391,9 @@ public final class PowerBIRestAPIUtils {
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
-        final Response response = client.get();
-        return checkResponse(response, responseType);
+        try (final Response response = client.get()) {
+            return checkResponse(response, responseType);
+        }
     }
 
     /** Make a POST request */
@@ -401,8 +402,9 @@ public final class PowerBIRestAPIUtils {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
-        final Response response = client.post(body);
-        return checkResponse(response, responseType);
+        try (final Response response = client.post(body)) {
+            return checkResponse(response, responseType);
+        }
     }
 
     /** Make a DELETE request */
@@ -410,8 +412,9 @@ public final class PowerBIRestAPIUtils {
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
-        final Response response = client.delete();
-        return checkResponse(response, responseType);
+        try (final Response response = client.delete()) {
+            return checkResponse(response, responseType);
+        }
     }
 
     /** Make a PUT request */
@@ -420,8 +423,9 @@ public final class PowerBIRestAPIUtils {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
-        final Response response = client.put(body);
-        return checkResponse(response, responseType);
+        try (final Response response = client.put(body)) {
+            return checkResponse(response, responseType);
+        }
     }
 
     /**
