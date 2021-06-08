@@ -74,12 +74,12 @@ import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.util.ConvenienceMethods;
-import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.DefaultOAuth20Scope;
 import org.knime.ext.azuread.auth.OAuth20Scope;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils.PowerBIIllegalValueException;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
+import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
 import org.knime.ext.powerbi.core.rest.bindings.Column;
 import org.knime.ext.powerbi.core.rest.bindings.Dataset;
@@ -179,7 +179,7 @@ final class SendToPowerBINodeModel extends NodeModel {
         checkTableSize(inData);
 
         // Get the settings
-        final AzureADAuthentication auth = m_settings.getAuthentication();
+        final AuthTokenProvider auth = new AzureADAuthTokenSupplier(m_settings.getAuthentication());
         final String[] tableNames = m_settings.getTableNames();
         final String datasetName = m_settings.getDatasetName();
         final String workspaceId = m_settings.getWorkspace().isEmpty() ? null : m_settings.getWorkspace();
@@ -245,7 +245,7 @@ final class SendToPowerBINodeModel extends NodeModel {
         return new BufferedDataTable[0];
     }
 
-    private void sendTable(final BufferedDataTable table, final ExecutionMonitor exec, final AzureADAuthentication auth,
+    private void sendTable(final BufferedDataTable table, final ExecutionMonitor exec, final AuthTokenProvider auth,
         final String workspaceId, final String datasetId, final String tableName)
         throws CanceledExecutionException, PowerBIResponseException, PowerBIIllegalValueException {
         final RowsBuilder rowBuilder = new RowsBuilder(getColumnIndexMap(table.getDataTableSpec()));
@@ -270,7 +270,7 @@ final class SendToPowerBINodeModel extends NodeModel {
     }
 
     /** Deletes all rows from the given tables from the given dataset */
-    private static void deleteRowsFromTables(final AzureADAuthentication auth, final String workspaceId,
+    private static void deleteRowsFromTables(final AuthTokenProvider auth, final String workspaceId,
         final String datasetId, final String[] tableNames) throws PowerBIResponseException {
         for (final String t : tableNames) {
             PowerBIRestAPIUtils.deleteRows(auth, workspaceId, datasetId, t);
@@ -313,8 +313,8 @@ final class SendToPowerBINodeModel extends NodeModel {
     }
 
     /** Get the dataset with the given name */
-    private static Dataset getDataset(final AzureADAuthentication auth, final String workspaceId,
-        final String datasetName) throws PowerBIResponseException {
+    private static Dataset getDataset(final AuthTokenProvider auth, final String workspaceId, final String datasetName)
+        throws PowerBIResponseException {
         final Datasets datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         for (final Dataset dataset : datasets.getValue()) {
             if (datasetName.equals(dataset.getName())) {

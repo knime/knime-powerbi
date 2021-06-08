@@ -85,9 +85,9 @@ import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.util.SharedIcons;
 import org.knime.core.util.SwingWorkerWithContext;
 import org.knime.ext.azuread.auth.Authenticator.AuthenticatorState;
-import org.knime.ext.azuread.auth.AzureADAuthentication;
 import org.knime.ext.azuread.auth.AzureADAuthenticator;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
+import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.Groups;
@@ -609,7 +609,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     /** Start a thread to update the workspace options */
     private void updateWorkspaceOptions() {
-        final AzureADAuthentication auth = m_authenticator.getAuthentication();
+        final AuthTokenProvider auth = new AzureADAuthTokenSupplier(m_authenticator.getAuthentication());
         final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableWorkspaces(auth), //
             this::setWorkspaceOptions, //
@@ -629,7 +629,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
             return;
         }
         final String workspaceId = workspace.getIdentifier();
-        final AzureADAuthentication auth = m_authenticator.getAuthentication();
+        final AuthTokenProvider auth = new AzureADAuthTokenSupplier(m_authenticator.getAuthentication());
         final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableDatasets(auth, workspaceId), //
             this::setDatasetOptions, //
@@ -654,7 +654,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
 
         final String workspaceId = workspace.getIdentifier();
         final String datasetId = dataset.getIdentifier();
-        final AzureADAuthentication auth = m_authenticator.getAuthentication();
+        final AuthTokenProvider auth = new AzureADAuthTokenSupplier(m_authenticator.getAuthentication());
         final DefaultSwingWorker<List<PowerBIElement>> worker = new DefaultSwingWorker<>( //
             () -> getAvailableTables(auth, workspaceId, datasetId), //
             this::setTableOptions, //
@@ -737,7 +737,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     /* ------------------------------------------------ REST API helpers ------------------------ */
 
     /** Call the REST API to get the available workspaces */
-    private static List<PowerBIElement> getAvailableWorkspaces(final AzureADAuthentication auth)
+    private static List<PowerBIElement> getAvailableWorkspaces(final AuthTokenProvider auth)
         throws PowerBIResponseException {
         final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
         final List<PowerBIElement> workspaces = Arrays.stream(groups.getValue()) //
@@ -748,7 +748,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
     }
 
     /** Call the REST API to get the available datasets */
-    private List<PowerBIElement> getAvailableDatasets(final AzureADAuthentication auth, final String workspaceId)
+    private List<PowerBIElement> getAvailableDatasets(final AuthTokenProvider auth, final String workspaceId)
         throws PowerBIResponseException {
         final Datasets datasets;
         if (workspaceId.isEmpty()) {
@@ -780,7 +780,7 @@ final class SendToPowerBINodeDialog extends NodeDialogPane {
         }
     }
 
-    private static List<PowerBIElement> getAvailableTables(final AzureADAuthentication auth, final String workspaceId,
+    private static List<PowerBIElement> getAvailableTables(final AuthTokenProvider auth, final String workspaceId,
         final String datasetId) throws PowerBIResponseException {
         final Tables tables;
 

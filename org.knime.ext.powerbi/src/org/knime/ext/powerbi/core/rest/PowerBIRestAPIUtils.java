@@ -48,7 +48,7 @@
  */
 package org.knime.ext.powerbi.core.rest;
 
-import java.net.UnknownHostException;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -61,9 +61,6 @@ import javax.ws.rs.core.UriBuilder;
 
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.transport.http.HTTPConduit;
-import org.knime.ext.azuread.auth.AzureADAuthentication;
-import org.knime.ext.azuread.auth.AzureADAuthenticationUtils;
-import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationException;
 import org.knime.ext.powerbi.core.rest.bindings.Column;
 import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
@@ -85,8 +82,6 @@ public final class PowerBIRestAPIUtils {
     private static final long CONNECTION_TIMEOUT = 30000;
 
     private static final long RECEIVE_TIMEOUT = 60000;
-
-    private static final long MIN_TOKEN_VALID_TIME = 60000; // 1min
 
     private static final String GET_DATASETS_URI = "https://api.powerbi.com/v1.0/myorg/datasets";
 
@@ -141,8 +136,7 @@ public final class PowerBIRestAPIUtils {
      * @return a {@link Datasets} object which contains a list of datasets
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Datasets getDatasets(final AzureADAuthentication auth) throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
+    public static Datasets getDatasets(final AuthTokenProvider auth) throws PowerBIResponseException {
         return get(GET_DATASETS_URI, Datasets.class, auth);
     }
 
@@ -154,12 +148,11 @@ public final class PowerBIRestAPIUtils {
      * @return a {@link Datasets} object which contains a list of datasets
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Datasets getDatasets(final AzureADAuthentication auth, final String groupId)
+    public static Datasets getDatasets(final AuthTokenProvider auth, final String groupId)
         throws PowerBIResponseException {
         if (groupId == null) {
             return getDatasets(auth);
         }
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(GET_DATASETS_IN_GROUP_URI).build(groupId).toString();
         return get(uri, Datasets.class, auth);
     }
@@ -174,9 +167,8 @@ public final class PowerBIRestAPIUtils {
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Dataset postDataset(final AzureADAuthentication auth, final String datasetName,
-        final String defaultMode, final Table[] tables) throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
+    public static Dataset postDataset(final AuthTokenProvider auth, final String datasetName, final String defaultMode,
+        final Table[] tables) throws PowerBIResponseException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
@@ -195,12 +187,11 @@ public final class PowerBIRestAPIUtils {
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Dataset postDataset(final AzureADAuthentication auth, final String groupId, final String datasetName,
+    public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
         final String defaultMode, final Table[] tables) throws PowerBIResponseException {
         if (groupId == null) {
             return postDataset(auth, datasetName, defaultMode, tables);
         }
-        refreshTokenIfNecessary(auth);
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
@@ -219,9 +210,8 @@ public final class PowerBIRestAPIUtils {
      * @param rows the rows to add
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void postRows(final AzureADAuthentication auth, final String datasetId, final String tableName,
+    public static void postRows(final AuthTokenProvider auth, final String datasetId, final String tableName,
         final String rows) throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(POST_ROWS_URI).build(datasetId, tableName).toString();
         post(uri, Void.class, rows, auth);
     }
@@ -237,13 +227,12 @@ public final class PowerBIRestAPIUtils {
      * @param rows the rows to add
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void postRows(final AzureADAuthentication auth, final String groupId, final String datasetId,
+    public static void postRows(final AuthTokenProvider auth, final String groupId, final String datasetId,
         final String tableName, final String rows) throws PowerBIResponseException {
         if (groupId == null) {
             postRows(auth, datasetId, tableName, rows);
             return;
         }
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(POST_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
         post(uri, Void.class, rows, auth);
     }
@@ -255,9 +244,8 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void deleteDataset(final AzureADAuthentication auth, final String datasetId)
+    public static void deleteDataset(final AuthTokenProvider auth, final String datasetId)
         throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(DELETE_DATASET_URI).build(datasetId).toString();
         delete(uri, Void.class, auth);
     }
@@ -270,13 +258,12 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void deleteDataset(final AzureADAuthentication auth, final String groupId, final String datasetId)
+    public static void deleteDataset(final AuthTokenProvider auth, final String groupId, final String datasetId)
         throws PowerBIResponseException {
         if (groupId == null) {
             deleteDataset(auth, datasetId);
             return;
         }
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(DELETE_DATASET_IN_GROUP_URI).build(groupId, datasetId).toString();
         delete(uri, Void.class, auth);
     }
@@ -289,9 +276,8 @@ public final class PowerBIRestAPIUtils {
      * @return the tables
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Tables getTables(final AzureADAuthentication auth, final String datasetId)
+    public static Tables getTables(final AuthTokenProvider auth, final String datasetId)
         throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(GET_TABLES_URI).build(datasetId).toString();
         return get(uri, Tables.class, auth);
     }
@@ -305,12 +291,11 @@ public final class PowerBIRestAPIUtils {
      * @return the tables
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Tables getTables(final AzureADAuthentication auth, final String groupId, final String datasetId)
+    public static Tables getTables(final AuthTokenProvider auth, final String groupId, final String datasetId)
         throws PowerBIResponseException {
         if (groupId == null) {
             return getTables(auth, datasetId);
         }
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(GET_TABLES_IN_GROUP_URI).build(groupId, datasetId).toString();
         return get(uri, Tables.class, auth);
     }
@@ -324,9 +309,8 @@ public final class PowerBIRestAPIUtils {
      * @param columns the columns of the table
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void putTable(final AzureADAuthentication auth, final String datasetId, final String tableName,
+    public static void putTable(final AuthTokenProvider auth, final String datasetId, final String tableName,
         final Column[] columns) throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", tableName);
         body.put("columns", columns);
@@ -344,13 +328,12 @@ public final class PowerBIRestAPIUtils {
      * @param columns the columns of the table
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void putTable(final AzureADAuthentication auth, final String groupId, final String datasetId,
+    public static void putTable(final AuthTokenProvider auth, final String groupId, final String datasetId,
         final String tableName, final Column[] columns) throws PowerBIResponseException {
         if (groupId == null) {
             putTable(auth, datasetId, tableName, columns);
             return;
         }
-        refreshTokenIfNecessary(auth);
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", tableName);
         body.put("columns", columns);
@@ -365,8 +348,7 @@ public final class PowerBIRestAPIUtils {
      * @return the groups the user has access to
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static Groups getGroups(final AzureADAuthentication auth) throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
+    public static Groups getGroups(final AuthTokenProvider auth) throws PowerBIResponseException {
         return get(GET_GROUPS_URI, Groups.class, auth);
     }
 
@@ -378,9 +360,8 @@ public final class PowerBIRestAPIUtils {
      * @param tableName the name of the table
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void deleteRows(final AzureADAuthentication auth, final String datasetId, final String tableName)
+    public static void deleteRows(final AuthTokenProvider auth, final String datasetId, final String tableName)
         throws PowerBIResponseException {
-        refreshTokenIfNecessary(auth);
         final String uri = UriBuilder.fromPath(DELETE_ROWS_URI).build(datasetId, tableName).toString();
         delete(uri, Void.class, auth);
     }
@@ -394,20 +375,19 @@ public final class PowerBIRestAPIUtils {
      * @param tableName the name of the table
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
-    public static void deleteRows(final AzureADAuthentication auth, final String groupId, final String datasetId,
+    public static void deleteRows(final AuthTokenProvider auth, final String groupId, final String datasetId,
         final String tableName) throws PowerBIResponseException {
         if (groupId == null) {
             deleteRows(auth, datasetId, tableName);
             return;
         }
-        refreshTokenIfNecessary(auth);
         final String uri =
             UriBuilder.fromPath(DELETE_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
         delete(uri, Void.class, auth);
     }
 
     /** Make a GET request */
-    private static <T> T get(final String uri, final Class<T> responseType, final AzureADAuthentication auth)
+    private static <T> T get(final String uri, final Class<T> responseType, final AuthTokenProvider auth)
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
@@ -417,7 +397,7 @@ public final class PowerBIRestAPIUtils {
 
     /** Make a POST request */
     private static <T> T post(final String uri, final Class<T> responseType, final String body,
-        final AzureADAuthentication auth) throws PowerBIResponseException {
+        final AuthTokenProvider auth) throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
@@ -426,7 +406,7 @@ public final class PowerBIRestAPIUtils {
     }
 
     /** Make a DELETE request */
-    private static <T> T delete(final String uri, final Class<T> responseType, final AzureADAuthentication auth)
+    private static <T> T delete(final String uri, final Class<T> responseType, final AuthTokenProvider auth)
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
@@ -436,7 +416,7 @@ public final class PowerBIRestAPIUtils {
 
     /** Make a PUT request */
     private static <T> T put(final String uri, final Class<T> responseType, final String body,
-        final AzureADAuthentication auth) throws PowerBIResponseException {
+        final AuthTokenProvider auth) throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
@@ -470,7 +450,7 @@ public final class PowerBIRestAPIUtils {
     }
 
     /** Get a web client that accesses the given url with the given authentication */
-    private static WebClient getClient(final String url, final AzureADAuthentication auth) {
+    private static WebClient getClient(final String url, final AuthTokenProvider auth) throws PowerBIResponseException {
         final WebClient client = WebClient.create(url);
 
         // Set the timeout
@@ -483,33 +463,22 @@ public final class PowerBIRestAPIUtils {
         return client;
     }
 
-    private static String getAuthenticationHeader(final AzureADAuthentication auth) {
-        return "Bearer " + auth.getAccessToken();
-    }
-
-    /** Check if the access token is still valid and refresh it if it is not valid anymore */
-    private static void refreshTokenIfNecessary(final AzureADAuthentication auth) throws PowerBIResponseException {
-        if (System.currentTimeMillis() + MIN_TOKEN_VALID_TIME > auth.getValidUntil()) {
-            // The token needs to be refreshed
-            refreshToken(auth);
+    private static String getAuthenticationHeader(final AuthTokenProvider auth) throws PowerBIResponseException {
+        try {
+            return "Bearer " + auth.getToken();
+        } catch (final IOException ex) {
+            throw new PowerBIResponseException(ex.getMessage(), ex);
         }
     }
 
-    /** Refresh the access token (if no other thread refreshed it already) */
-    private static synchronized void refreshToken(final AzureADAuthentication auth) throws PowerBIResponseException {
-        if (System.currentTimeMillis() + MIN_TOKEN_VALID_TIME > auth.getValidUntil()) {
-            try {
-                AzureADAuthenticationUtils.refreshToken(auth);
-            } catch (final AuthenticationException | InterruptedException e) {
-                if (e.getCause() instanceof UnknownHostException) {
-                    throw new PowerBIResponseException(
-                        "Cannot connect to Microsoft. Please make sure to have an active internet connection.", e);
-                }
-                throw new PowerBIResponseException(
-                    "The access token is not valid anymore and could not be updated. Please update the authentication.",
-                    e);
-            }
-        }
+    /** A interface for everything that can provide an Bearer token for Power BI */
+    @FunctionalInterface
+    public static interface AuthTokenProvider {
+        /**
+         * @return the Bearer token
+         * @throws IOException if no token can be returned
+         */
+        String getToken() throws IOException;
     }
 
     /**
