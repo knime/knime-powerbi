@@ -74,8 +74,9 @@ import spark.Service;
  * Static utility class to authenticate with Azure Active Directory.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-// TODO: create a utility for general OAuth authentication
+@Deprecated
 public class AzureADAuthenticationUtils {
 
     /** The client id of the app registration */

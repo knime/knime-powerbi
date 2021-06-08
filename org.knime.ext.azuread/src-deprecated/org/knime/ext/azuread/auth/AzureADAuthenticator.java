@@ -62,8 +62,9 @@ import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationExcep
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-// TODO: Make abstract version (or default with generic)
+@Deprecated
 public class AzureADAuthenticator implements Authenticator<AzureADAuthentication> {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(AzureADAuthentication.class);

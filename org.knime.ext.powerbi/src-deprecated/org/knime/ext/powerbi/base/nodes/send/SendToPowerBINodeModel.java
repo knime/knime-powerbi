@@ -94,7 +94,9 @@ import com.google.gson.Gson;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
+@Deprecated
 final class SendToPowerBINodeModel extends NodeModel {
 
     private static final Gson GSON = new Gson();

@@ -61,7 +61,9 @@ import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
  * refreshed if it is valid for less than 1min.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
+@Deprecated
 class AzureADAuthTokenSupplier implements AuthTokenProvider {
 
     private static final long MIN_TOKEN_VALID_TIME = 60000; // 1min

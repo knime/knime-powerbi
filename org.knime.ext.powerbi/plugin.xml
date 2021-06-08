@@ -14,7 +14,7 @@
    <extension point="org.knime.workbench.repository.nodes">
       <node
             category-path="/labs/powerbi"
-            deprecated="false"
+            deprecated="true"
             factory-class="org.knime.ext.powerbi.base.nodes.send.SendToPowerBINodeFactory">
       </node>
       <node

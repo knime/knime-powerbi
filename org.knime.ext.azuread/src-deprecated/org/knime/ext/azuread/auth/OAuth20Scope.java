@@ -44,28 +44,21 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   18.11.2019 (David Kolb, KNIME GmbH, Konstanz, Germany): created
+ *   Oct 8, 2019 (benjamin): created
  */
-package org.knime.ext.powerbi.base.nodes.send;
+package org.knime.ext.azuread.auth;
 
 /**
- * Exception to indicate that a credentials file does not have the right format.
+ * OAuth 20 scope interface.
  *
- * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-final class InvalidCredentialsFileFormatException extends Exception {
+@Deprecated
+public interface OAuth20Scope {
 
-    private static final long serialVersionUID = 1L;
-
-    InvalidCredentialsFileFormatException(final String msg) {
-        super(msg);
-    }
-
-    InvalidCredentialsFileFormatException(final Throwable ex) {
-        super(ex);
-    }
-
-    InvalidCredentialsFileFormatException(final String msg, final Throwable ex) {
-        super(msg, ex);
-    }
+    /**
+     * @return the string representation of the scope that needs to be added to the request header
+     */
+    String getScope();
 }

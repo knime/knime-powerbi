@@ -85,7 +85,9 @@ import org.knime.ext.azuread.auth.DefaultAzureADAuthentication;
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
+@Deprecated
 final class SendToPowerBINodeSettings {
 
     private static final String ENCRYPTION_KEY = "9J4jG3m1v2FKmH9C5TffFw";

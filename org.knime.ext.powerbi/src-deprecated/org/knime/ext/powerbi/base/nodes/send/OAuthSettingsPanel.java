@@ -79,9 +79,9 @@ import org.knime.ext.azuread.auth.Authenticator.AuthenticatorState;
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author Ole Ostergaard, KNIME GmbH, Konstanz, Germany
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-//TODO: Is this always OAuth or could it be something else?
-//TODO: Move somewhere else where it can be reused
+@Deprecated
 final class OAuthSettingsPanel extends JPanel {
 
     private static final String STATUS_LABEL_TEXT = "Status: ";

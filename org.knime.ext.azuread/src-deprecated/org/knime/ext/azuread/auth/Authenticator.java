@@ -58,7 +58,9 @@ import java.util.EventListener;
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  * @param <T> The type of the authentication object managed by this Authenticator.
+ * @deprecated
  */
+@Deprecated
 public interface Authenticator<T> {
 
     /**

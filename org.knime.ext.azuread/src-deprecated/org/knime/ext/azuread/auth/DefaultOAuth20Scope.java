@@ -44,45 +44,37 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 4, 2019 (benjamin): created
+ *   Oct 8, 2019 (benjamin): created
  */
 package org.knime.ext.azuread.auth;
 
-import java.util.Optional;
-
 /**
- * A authentication for Azure Active Directory. Contains a token to make REST calls.
+ * A default implementation of {@link OAuth20Scope}.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-public interface AzureADAuthentication {
+@Deprecated
+public class DefaultOAuth20Scope implements OAuth20Scope {
+
+    private final String[] m_resources;
 
     /**
-     * Returns the access token.
+     * Create a new scope for the given resources.
      *
-     * @return the access token
+     * @param resources a list of requested resources
      */
-    String getAccessToken();
+    public DefaultOAuth20Scope(final String... resources) {
+        m_resources = resources;
+    }
 
-    /**
-     * Returns the time up until the access token is valid in milliseconds from 1. January 1970.
-     *
-     * @return the time up until the access token is valid
-     */
-    long getValidUntil();
+    @Override
+    public String getScope() {
+        return String.join(" ", m_resources);
+    }
 
-    /**
-     * Returns the refresh token if available.
-     *
-     * @return the refresh token if available
-     */
-    Optional<String> getRefreshToken();
-
-    /**
-     * Updates the saved access token when it is refreshed.
-     *
-     * @param accessToken the new access token
-     * @param validUntil the time until the access token is valid
-     */
-    void updateAccessToken(String accessToken, long validUntil);
+    @Override
+    public String toString() {
+        return getScope();
+    }
 }

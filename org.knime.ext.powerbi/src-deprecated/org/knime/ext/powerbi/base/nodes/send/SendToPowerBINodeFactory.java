@@ -61,7 +61,9 @@ import org.knime.core.node.port.PortType;
  * Send to Power BI factory.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
+@Deprecated
 public final class SendToPowerBINodeFactory extends ConfigurableNodeFactory<SendToPowerBINodeModel> {
 
     @Override

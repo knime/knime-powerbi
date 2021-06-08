@@ -44,19 +44,69 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 8, 2019 (benjamin): created
+ *   11.11.2019 (David Kolb, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.ext.azuread.auth;
+package org.knime.ext.powerbi.base.nodes.send;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.knime.ext.azuread.auth.AzureADAuthentication;
 
 /**
- * OAuth 20 scope interface.
+ * Singleton HashMap to store AzureADAuthentication credentials.
  *
- * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author David Kolb, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
-public interface OAuth20Scope {
+@Deprecated
+final class InMemoryCredentialStore {
+
+    private static InMemoryCredentialStore m_instance;
+
+    private Map<String, AzureADAuthentication> m_dataStore = new HashMap<String, AzureADAuthentication>();
+
+    private InMemoryCredentialStore() {
+    }
 
     /**
-     * @return the string representation of the scope that needs to be added to the request header
+     * Get the single InMemoryCredentialStore instance.
+     *
+     * @return The singleton InMemoryCredentialStore instance.
      */
-    String getScope();
+    public static InMemoryCredentialStore getInstance() {
+        if (m_instance == null) {
+            m_instance = new InMemoryCredentialStore();
+        }
+        return m_instance;
+    }
+
+    /**
+     * Store the specified AzureADAuthentication with specified key.
+     *
+     * @param key The key to use.
+     * @param value The AzureADAuthentication to store.
+     */
+    public void put(final String key, final AzureADAuthentication value) {
+        m_dataStore.put(key, value);
+    }
+
+    /**
+     * Get the AzureADAuthentication associated with the specified key.
+     *
+     * @param key The key to get the value of.
+     * @return The AzureADAuthentication for the specified key or null if no mapping is available.
+     */
+    public AzureADAuthentication get(final String key) {
+        return m_dataStore.get(key);
+    }
+
+    /**
+     * Remove the AzureADAuthentication with specified key.
+     *
+     * @param key The key to remove the value of.
+     */
+    public void remove(final String key) {
+        m_dataStore.remove(key);
+    }
 }

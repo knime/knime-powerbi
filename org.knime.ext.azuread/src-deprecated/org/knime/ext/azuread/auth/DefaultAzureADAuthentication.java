@@ -55,7 +55,9 @@ import java.util.Optional;
  * constructor.
  *
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @deprecated
  */
+@Deprecated
 public final class DefaultAzureADAuthentication implements AzureADAuthentication {
 
     private String m_accessToken;
