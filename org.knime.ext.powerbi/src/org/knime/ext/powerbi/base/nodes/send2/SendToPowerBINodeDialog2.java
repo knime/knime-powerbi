@@ -1151,7 +1151,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
             @Override
             public Dimension getMaximumSize() {
-                return getPreferredSize();
+                return new Dimension(Short.MAX_VALUE, getPreferredSize().height);
             }
 
             /**
