@@ -66,6 +66,7 @@ import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.ErrorResponse;
 import org.knime.ext.powerbi.core.rest.bindings.Groups;
+import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
 
@@ -164,19 +165,24 @@ public final class PowerBIRestAPIUtils {
      * @param datasetName the name of the dataset
      * @param defaultMode the mode of the dataset
      * @param tables the table definitions of the dataset
+     * @param relationships nullable array of column relationships
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
     public static Dataset postDataset(final AuthTokenProvider auth, final String datasetName, final String defaultMode,
-        final Table[] tables) throws PowerBIResponseException {
+        final Table[] tables, final Relationship[] relationships) throws PowerBIResponseException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
+        if(relationships != null && relationships.length > 0) {
+            body.put("relationships", relationships);
+        }
         return post(POST_DATASET_URI, Dataset.class, GSON.toJson(body), auth);
     }
 
     /**
+     * This is the frozen version used by the deprecated node.
      * Calls "Push Datasets - Datasets PostDatasetInGroup" from the Power BI REST API.
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
@@ -187,15 +193,42 @@ public final class PowerBIRestAPIUtils {
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
      */
+    @Deprecated
     public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
         final String defaultMode, final Table[] tables) throws PowerBIResponseException {
+        final Map<String, Object> body = new HashMap<>(2);
+        body.put("name", datasetName);
+        body.put("defaultMode", defaultMode);
+        body.put("tables", tables);
+        String uri = groupId == null ? POST_DATASET_URI
+            : UriBuilder.fromPath(POST_DATASET_IN_GROUP_URI).build(groupId).toString();
+        return post(uri, Dataset.class, GSON.toJson(body), auth);
+    }
+
+    /**
+     * Calls "Push Datasets - Datasets PostDatasetInGroup" from the Power BI REST API.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetName the name of the dataset
+     * @param defaultMode the mode of the dataset
+     * @param tables the table definitions of the dataset
+     * @param relationships nullable array of PowerBI relationship entitites
+     * @return the created dataset
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     */
+    public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
+        final String defaultMode, final Table[] tables, final Relationship[] relationships) throws PowerBIResponseException {
         if (groupId == null) {
-            return postDataset(auth, datasetName, defaultMode, tables);
+            return postDataset(auth, datasetName, defaultMode, tables, relationships);
         }
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
+        if(relationships != null && relationships.length > 0) {
+            body.put("relationships", relationships);
+        }
         final String uri = UriBuilder.fromPath(POST_DATASET_IN_GROUP_URI).build(groupId).toString();
         return post(uri, Dataset.class, GSON.toJson(body), auth);
     }

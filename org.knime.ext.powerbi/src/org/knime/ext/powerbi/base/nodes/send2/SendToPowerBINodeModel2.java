@@ -88,6 +88,7 @@ import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseExcept
 import org.knime.ext.powerbi.core.rest.bindings.Column;
 import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
+import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
 
@@ -208,43 +209,35 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         final Dataset dataset = getDataset(auth, workspaceId, datasetName);
         String datasetId = dataset == null ? null : dataset.getId();
 
+        // check settings
+        checkSettingsForExecute(datasetName, createNewDataset, allowOverwrite, dataset);
+
         if (createNewDataset && dataset != null) {
-            if (allowOverwrite) {
-                // Delete the dataset
-                PowerBIRestAPIUtils.deleteDataset(auth, workspaceId, datasetId);
-                datasetId = null;
-            } else {
-                // Fail because the dataset exists
-                throw new InvalidSettingsException("The dataset with the name \"" + datasetName + "\" already exists.");
-            }
+            // Delete the dataset
+            PowerBIRestAPIUtils.deleteDataset(auth, workspaceId, datasetId);
+            datasetId = null;
         } else if (!createNewDataset) {
-            if (dataset == null) {
-                // Fail because the dataset does not exist
-                throw new InvalidSettingsException(
-                    "The selected dataset with the name \"" + datasetName + "\" does not exist anymore.");
-            } else {
-                // Check if the dataset works for appending
-                if (!dataset.isAddRowsAPIEnabled()) {
-                    throw new InvalidSettingsException("The dataset with the name \"" + datasetName
-                        + "\" already exists and does not support adding rows.");
-                }
-                final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
-                checkTablesExist(tables, tableNames);
-                // If refreshing we need to delete the selected tables
-                if (!appendToExisting) {
-                    deleteRowsFromTables(auth, workspaceId, datasetId, tableNames);
-                }
+            final Tables tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
+            checkTablesExist(tables, tableNames);
+            // If refreshing we need to delete the selected tables
+            if (!appendToExisting) {
+                deleteRowsFromTables(auth, workspaceId, datasetId, tableNames);
             }
         }
 
         if (datasetId == null) {
             // Create the dataset
             final Table[] tables = new Table[inData.length];
+            // tableNames may contain tables from ports that have been removed. These are skipped since inData reflects
+            // the current number of ports
             for (int i = 0; i < inData.length; i++) {
                 tables[i] = createTableDef(tableNames[i], inData[i].getDataTableSpec());
             }
-            final Dataset pbiDataset =
-                PowerBIRestAPIUtils.postDataset(auth, workspaceId, datasetName, POWERBI_DATASET_MODE, tables);
+            // get rid of relationships that refer to tables whose input ports have been removed
+            String[] filterTableNames = Arrays.copyOf(tableNames, inData.length);
+            Relationship[] relationships = m_settings.getRelationships(filterTableNames);
+            final Dataset pbiDataset = PowerBIRestAPIUtils.postDataset(auth, workspaceId, datasetName,
+                POWERBI_DATASET_MODE, tables, relationships);
             datasetId = pbiDataset.getId();
         }
 
@@ -258,6 +251,31 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         }
 
         return new BufferedDataTable[0];
+    }
+
+    /**
+     * Checks whether the selected options are suitable for node execution.
+     * @param datasetName identifier
+     * @param createNewDataset whether to create/append
+     * @param allowOverwrite if deletion is allowed
+     * @param dataset PowerBI binding
+     */
+    private static void checkSettingsForExecute(final String datasetName, final boolean createNewDataset,
+        final boolean allowOverwrite, final Dataset dataset) throws InvalidSettingsException {
+        // don't overwrite existing datasets if not allowed
+        if (createNewDataset && dataset != null && !allowOverwrite) {
+            throw new InvalidSettingsException("The dataset with the name \"" + datasetName + "\" already exists.");
+        }
+        // can't modify nonexisting dataset
+        if (!createNewDataset && dataset == null) {
+            throw new InvalidSettingsException(
+                "The selected dataset with the name \"" + datasetName + "\" does not exist anymore.");
+        }
+        // can't update a dataset if the add row API is not enabled
+        if (!createNewDataset && dataset != null && !dataset.isAddRowsAPIEnabled()) {
+            throw new InvalidSettingsException(
+                "The dataset with the name \"" + datasetName + "\" already exists and does not support adding rows.");
+        }
     }
 
     private void sendTable(final BufferedDataTable table, final ExecutionMonitor exec, final AuthTokenProvider auth,

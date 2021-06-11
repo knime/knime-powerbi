@@ -115,7 +115,7 @@ public final class ErrorResponse {
          */
         public String getMessage() {
             // Replace html tags
-            return message.replaceAll("\\<.*?\\>", "");
+            return message != null ? message.replaceAll("\\<.*?\\>", "") : "";
         }
 
         /**

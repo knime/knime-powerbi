@@ -49,12 +49,19 @@
 package org.knime.ext.powerbi.base.nodes.send2;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.ext.powerbi.core.rest.bindings.Relationship;
+
+import com.google.common.base.Objects;
 
 /**
  * Settings store managing all configurations required to send to data to PowerBI.
@@ -74,6 +81,16 @@ final class SendToPowerBINodeSettings2 {
 
     private static final String CFG_KEY_TABLE_NAMES_DIALOG = "table_name_dialog";
 
+    private static final String CFG_KEY_RELATIONSHIP_FROMTABLES = "relationship_fromtables";
+
+    private static final String CFG_KEY_RELATIONSHIP_FROMCOLUMNS = "relationship_fromcolumns";
+
+    private static final String CFG_KEY_RELATIONSHIP_TOTABLES = "relationship_totables";
+
+    private static final String CFG_KEY_RELATIONSHIP_TOCOLUMNS = "relationship_tocolumns";
+
+    private static final String CFG_KEY_RELATIONSHIP_CROSSFILTERBEHAVIORS = "relationship_crossfilterbehaviors";
+
     private static final String CFG_KEY_CREATE_NEW_DATASET = "create_new_dataset";
 
     private static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
@@ -91,6 +108,16 @@ final class SendToPowerBINodeSettings2 {
 
     /** The unused table names in the unselected dialog option */
     private String[] m_tableNamesDialog = {""};
+
+    private String[] m_relationshipFromTables = {};
+
+    private String[] m_relationshipFromColumns = {};
+
+    private String[] m_relationshipToTables = {};
+
+    private String[] m_relationshipToColumns = {};
+
+    private String[] m_relationshipCrossfilterBehaviors = {};
 
     private boolean m_createNewDataset = true;
 
@@ -168,6 +195,51 @@ final class SendToPowerBINodeSettings2 {
         m_tableNamesDialog = tableNamesDialog;
     }
 
+    void setRelationshipCrossfilterBehaviors(final String[] stringArray) {
+        m_relationshipCrossfilterBehaviors = stringArray;
+
+    }
+
+    void setRelationshipToColumns(final String[] stringArray) {
+        m_relationshipToColumns = stringArray;
+
+    }
+
+    void setRelationshipToTables(final String[] stringArray) {
+        m_relationshipToTables = stringArray;
+
+    }
+
+    void setRelationshipFromColumns(final String[] stringArray) {
+        m_relationshipFromColumns = stringArray;
+
+    }
+
+    void setRelationshipFromTables(final String[] stringArray) {
+        m_relationshipFromTables = stringArray;
+
+    }
+
+    String[] getRelationshipCrossfilterBehaviors() {
+        return m_relationshipCrossfilterBehaviors;
+    }
+
+    String[] getRelationshipToColumns() {
+        return m_relationshipToColumns;
+    }
+
+    String[] getRelationshipToTables() {
+        return m_relationshipToTables;
+    }
+
+    String[] getRelationshipFromColumns() {
+        return m_relationshipFromColumns;
+    }
+
+    String[] getRelationshipFromTables() {
+        return m_relationshipFromTables;
+    }
+
     /**
      * @return the createNewDataset
      */
@@ -216,6 +288,13 @@ final class SendToPowerBINodeSettings2 {
         settings.addStringArray(CFG_KEY_TABLE_NAMES, getTableNames());
         settings.addString(CFG_KEY_DATASET_NAME_DIALOG, getDatasetNameDialog());
         settings.addStringArray(CFG_KEY_TABLE_NAMES_DIALOG, getTableNamesDialog());
+
+        settings.addStringArray(CFG_KEY_RELATIONSHIP_FROMTABLES, getRelationshipFromTables());
+        settings.addStringArray(CFG_KEY_RELATIONSHIP_FROMCOLUMNS, getRelationshipFromColumns());
+        settings.addStringArray(CFG_KEY_RELATIONSHIP_TOTABLES, getRelationshipToTables());
+        settings.addStringArray(CFG_KEY_RELATIONSHIP_TOCOLUMNS, getRelationshipToColumns());
+        settings.addStringArray(CFG_KEY_RELATIONSHIP_CROSSFILTERBEHAVIORS, getRelationshipCrossfilterBehaviors());
+
         settings.addBoolean(CFG_KEY_CREATE_NEW_DATASET, m_createNewDataset);
         settings.addBoolean(CFG_KEY_ALLOW_OVERWRITE, m_allowOverwrite);
         settings.addBoolean(CFG_KEY_APPEND_ROWS, m_appendRows);
@@ -235,6 +314,12 @@ final class SendToPowerBINodeSettings2 {
         // Check the table names
         final String[] tableNames = settings.getStringArray(CFG_KEY_TABLE_NAMES);
         checkTableNamesValid(tableNames);
+
+        String[] fromTables = settings.getStringArray(CFG_KEY_RELATIONSHIP_FROMTABLES);
+        String[] fromColumns = settings.getStringArray(CFG_KEY_RELATIONSHIP_FROMCOLUMNS);
+        String[] toTables = settings.getStringArray(CFG_KEY_RELATIONSHIP_TOTABLES);
+        String[] toColumns = settings.getStringArray(CFG_KEY_RELATIONSHIP_TOCOLUMNS);
+        checkRelationshipsValid(fromTables, fromColumns, toTables, toColumns);
     }
 
     void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException, IOException {
@@ -243,6 +328,12 @@ final class SendToPowerBINodeSettings2 {
         setTableNames(settings.getStringArray(CFG_KEY_TABLE_NAMES));
         setDatasetNameDialog(settings.getString(CFG_KEY_DATASET_NAME_DIALOG, ""));
         setTableNamesDialog(settings.getStringArray(CFG_KEY_TABLE_NAMES_DIALOG, ""));
+
+        setRelationshipFromTables(settings.getStringArray(CFG_KEY_RELATIONSHIP_FROMTABLES));
+        setRelationshipFromColumns(settings.getStringArray(CFG_KEY_RELATIONSHIP_FROMCOLUMNS));
+        setRelationshipToTables(settings.getStringArray(CFG_KEY_RELATIONSHIP_TOTABLES));
+        setRelationshipToColumns(settings.getStringArray(CFG_KEY_RELATIONSHIP_TOCOLUMNS));
+        setRelationshipCrossfilterBehaviors(settings.getStringArray(CFG_KEY_RELATIONSHIP_CROSSFILTERBEHAVIORS));
 
         setCreateNewDataset(settings.getBoolean(CFG_KEY_CREATE_NEW_DATASET));
         setAllowOverwrite(settings.getBoolean(CFG_KEY_ALLOW_OVERWRITE));
@@ -269,5 +360,66 @@ final class SendToPowerBINodeSettings2 {
         if (allNames.size() != tableNames.length) {
             throw new InvalidSettingsException("Please use unique table names for each table.");
         }
+    }
+
+    /**
+     * @param fromTables names of the source tables (per relationship)
+     * @param fromColumns names of the source columns (per relationship)
+     * @param toTables names of the target tables (per relationship)
+     * @param toColumns names of the target columns (per relationship)
+     * @throws InvalidSettingsException a) if a relationship has identical source and target table or b) two
+     *             relationships define the same source table+column and target table+column
+     */
+    private static void checkRelationshipsValid(final String[] fromTables, final String[] fromColumns,
+        final String[] toTables, final String[] toColumns) throws InvalidSettingsException {
+        Map<Relationship, Integer> rs = new HashMap<>();
+        for (int i = 0; i < fromTables.length; i++) {
+            int relationshipNumber = i + 1;
+            // check for self-referential relationships
+            if (Objects.equal(fromTables[i], toTables[i])) {
+                throw new InvalidSettingsException(String.format("Relationship %s relates table \"%s\" to itself. "
+                    + "Change the source or target of that relationship.", relationshipNumber, fromTables[i]));
+            }
+            // check for duplicate relationships
+            Relationship rel = new Relationship("", fromTables[i], fromColumns[i], toTables[i], toColumns[i], "");
+            if (rs.containsKey(rel)) {
+                throw new InvalidSettingsException(String.format(
+                    "Relationship %s defines the same source and target tables and columns as Relationship %s. "
+                        + "Remove or change either relationship.",
+                    relationshipNumber, rs.get(rel), fromTables[i], fromColumns[i], toTables[i], toColumns[i]));
+            }
+            rs.put(rel, relationshipNumber);
+        }
+    }
+
+    /**
+     * @param filterTableNames relationships referring to table names not in this set are not returned.
+     * @return combine the string fields {@link #getRelationshipFromTables()}, {@link #getRelationshipFromColumns()}
+     *         etc. into {@link Relationship} objects.
+     */
+    Relationship[] getRelationships(final String[] filterTableNames) {
+
+        Set<String> fTN = Set.of(filterTableNames);
+
+        final String[] relationshipFromTables = getRelationshipFromTables();
+        final String[] relationshipFromColumns = getRelationshipFromColumns();
+        final String[] relationshipToTables = getRelationshipToTables();
+        final String[] relationshipToColumns = getRelationshipToColumns();
+        final String[] relationshipCrossfilterBehaviors = getRelationshipCrossfilterBehaviors();
+
+        List<Relationship> relationships = new ArrayList<>();
+
+        for (int i = 0; i < relationshipFromTables.length; i++) {
+
+            if (!fTN.contains(relationshipFromTables[i]) || !fTN.contains(relationshipToTables[i])) {
+                continue;
+            }
+
+            // generate a unique identifier for the PowerBI API
+            final String name = "rel" + Integer.toString(i);
+            relationships.add(new Relationship(name, relationshipFromTables[i], relationshipFromColumns[i],
+                relationshipToTables[i], relationshipToColumns[i], relationshipCrossfilterBehaviors[i]));
+        }
+        return relationships.toArray(Relationship[]::new);
     }
 }
