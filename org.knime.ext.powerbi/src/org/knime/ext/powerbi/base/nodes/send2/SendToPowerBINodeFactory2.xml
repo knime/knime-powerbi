@@ -13,20 +13,8 @@
 			uploads columns that are supported by Power BI. Other
 			columns are
 			ignored. The supported types are
-			<i>String</i>
-			,
-			<i>Number (integer)</i>
-			,
-			<i>Number (long)</i>
-			,
-			<i>Number (double)</i>
-			,
-			<i>Boolean value</i>
-			,
-			<i>Local Date</i>
-			and
-			<i>Local Date Time</i>
-			.
+			<i>String, Number (integer), Number (long), Number (double), Boolean value, Local Date, 
+			and Local Date Time.</i>
 			<p />
 			The node uploads rows in chunks to Microsoft Power BI. If the node is
 			canceled, the already uploaded rows will remain in the Power BI
@@ -61,10 +49,9 @@
 			dataset and the number of rows that can be shipped per hour. For more
 			information visit the
 			<a
-				href="https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations">documentation</a>
-			.
+				href="https://docs.microsoft.com/en-us/power-bi/developer/api-rest-api-limitations">documentation.</a>
 		</intro>
-		<tab name="Settings">
+		<tab name="Options">
 			<option name="Workspace">
 				Select the workspace to use. Select "default" to use the default
 				workspace which is called "My workspace" in the Power BI user
@@ -105,6 +92,29 @@
 				Select if the input tables should be appended to the existing tables or
 				if all rows of the exiting table should be deleted and overwritten by
 				the input rows.
+			</option>
+		</tab>
+		<tab name="Relationships">
+			<option name="Add relationship">
+				The node can define an arbitrary number of relationships. 
+				Click this button to define a new relationship between two columns. 
+			</option>
+			<option name="From">
+				Each relationship is defined between a source column and a target column. 
+				Note that the columns must be located in different input tables.
+				Select an input table and the column that serves as source column here.
+			</option>
+			<option name="To">
+				Select a table and column that serves as the relationship's target column. 
+			</option>
+			<option name="Cross filtering">
+				Each relationship defines how filters set on involved columns propagate. 
+				If "One direction" is selected, filters will be applied to the table where values are aggregated. 
+				If "Both directions" is selected, filtering is applied as if both tables were joined into a single table. 
+				To let Power BI figure out a sensible configuration, select "Automatic". 
+				For further information, check out the 
+				<a href="https://docs.microsoft.com/en-us/power-bi/transform-model/desktop-create-and-manage-relationships">Power BI
+				documentation.</a> 
 			</option>
 		</tab>
 	</fullDescription>
