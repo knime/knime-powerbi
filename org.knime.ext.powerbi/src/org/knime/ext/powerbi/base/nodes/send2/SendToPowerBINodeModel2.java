@@ -180,6 +180,9 @@ final class SendToPowerBINodeModel2 extends NodeModel {
             }
         }
 
+        // throw invalid settings exception if any of those columns does not exist anymore due to a schema change
+        m_settings.validateAgainst(inSpecs);
+
         return new DataTableSpec[0];
     }
 

@@ -55,10 +55,11 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,6 +99,7 @@ import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.defaultnodesettings.DialogComponentButtonGroup;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObjectSpec;
+import org.knime.core.node.util.ColumnComboBoxRenderer;
 import org.knime.core.node.util.ColumnFilter;
 import org.knime.core.node.util.ColumnSelectionComboxBox;
 import org.knime.core.node.util.SharedIcons;
@@ -136,7 +138,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     private static final PowerBIElement NO_TABLES_PLACEHOLDER =
         new PowerBIElement("", true, "-- No tables available --");
 
-    private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel2.class);
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeDialog2.class);
 
     private final SendToPowerBINodeSettings2 m_settings;
 
@@ -890,7 +892,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
          * {@link SendToPowerBINodeDialog2#loadSettingsFrom(NodeSettingsRO, org.knime.core.data.DataTableSpec[])} to be
          * able to initialize {@link ColumnSelectionComboxBox}es.
          */
-        private PortObjectSpec[] m_latestPortSpecs;
+        private transient PortObjectSpec[] m_latestPortSpecs;
 
         private RelationshipsTab() {
             setLayout(new CardLayout());
@@ -1036,7 +1038,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
          * When the names of the tables in the "create dataset" section change, update the options in the select table
          * ComboBoxes.
          */
-        private void onTableNamesChange() {
+        private void onTableNamesChange() { // NOSONAR sonar didn't detect that this is called in an event listener
             m_relationshipPanels.forEach(RelationshipPanel::onTableNamesChange);
         }
 
@@ -1044,21 +1046,37 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             return m_relationshipPanels.stream().map(RelationshipPanel::getCrossFilterBehavior).toArray(String[]::new);
         }
 
-        private String[] getRelationshipToColumns() {
-            return m_relationshipPanels.stream().map(RelationshipPanel::getRelationshipToColumn).toArray(String[]::new);
+        private String[] getRelationshipToColumns() throws InvalidSettingsException {
+            String[] names = new String[m_relationshipPanels.size()];
+            for (int i = 0; i < m_relationshipPanels.size(); i++) {
+                Optional<String> name = m_relationshipPanels.get(i).m_toPanel.getSelectedColumnName();
+                if (name.isEmpty()) {
+                    throw new InvalidSettingsException("Please select a target column in Relationship " + (i + 1));
+                }
+                names[i] = name.get();
+            }
+            return names;
         }
 
         private String[] getRelationshipToTables() {
-            return m_relationshipPanels.stream().map(RelationshipPanel::getRelationshipToTable).toArray(String[]::new);
-        }
-
-        private String[] getRelationshipFromColumns() {
-            return m_relationshipPanels.stream().map(RelationshipPanel::getRelationshipFromColumn)
+            return m_relationshipPanels.stream().map(panel -> panel.m_toPanel.getSelectedTableName())
                 .toArray(String[]::new);
         }
 
+        private String[] getRelationshipFromColumns() throws InvalidSettingsException {
+            String[] names = new String[m_relationshipPanels.size()];
+            for (int i = 0; i < m_relationshipPanels.size(); i++) {
+                Optional<String> name = m_relationshipPanels.get(i).m_fromPanel.getSelectedColumnName();
+                if (name.isEmpty()) {
+                    throw new InvalidSettingsException("Please select a source column in Relationship " + (i + 1));
+                }
+                names[i] = name.get();
+            }
+            return names;
+        }
+
         private String[] getRelationshipFromTables() {
-            return m_relationshipPanels.stream().map(RelationshipPanel::getRelationshipFromTable)
+            return m_relationshipPanels.stream().map(panel -> panel.m_fromPanel.getSelectedTableName())
                 .toArray(String[]::new);
         }
 
@@ -1093,8 +1111,11 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                 setLayout(new GridBagLayout());
 
                 m_remove = new JButton("Remove relationship", SharedIcons.DELETE_TRASH.get());
-                m_toPanel = new ColumnSelectorPanel("To", 2, toTable, toColumn, null);
-                m_fromPanel = new ColumnSelectorPanel("From", 1, fromTable, fromColumn, m_toPanel);
+                m_fromPanel = new ColumnSelectorPanel("From", 1);
+                m_toPanel = new ColumnSelectorPanel("To", 2);
+                final TableSelection selectedFromTable = m_fromPanel.createControls(fromTable, fromColumn, -1);
+                m_toPanel.createControls(toTable, toColumn, selectedFromTable.m_portNumber);
+                m_fromPanel.setFilterPanel(m_toPanel);
 
                 String defaultCrossFilter = crossfilterBehavior != null ? crossfilterBehavior : "Automatic";
                 // the settings model is not used to load/save the value of the button group, see getCrossFilterBehavior
@@ -1106,7 +1127,6 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                 GridBagConstraints gbc = createGBC();
                 gbc.insets = new Insets(5, 5, 5, 5);
 
-                //
                 add(m_fromPanel, gbc);
 
                 gbc.gridx++;
@@ -1125,28 +1145,22 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
              * When the user changes the table name associated to an input port, update the comboboxes.
              */
             private void onTableNamesChange() {
-                m_fromPanel.onTableNamesChange();
-                m_toPanel.onTableNamesChange();
+                int fromTable = m_fromPanel.m_tableComboBox.getSelectedIndex();
+                int fromColumn = m_fromPanel.m_columnComboBox.getSelectedIndex();
+                int toTable = m_toPanel.m_tableComboBox.getSelectedIndex();
+                int toColumn = m_toPanel.m_columnComboBox.getSelectedIndex();
+
+                m_fromPanel.createControls(null, null, m_fromPanel.m_skipPort);
+                m_toPanel.createControls(null, null, m_toPanel.m_skipPort);
+
+                m_fromPanel.m_tableComboBox.setSelectedIndex(fromTable);
+                m_fromPanel.m_columnComboBox.setSelectedIndex(fromColumn);
+                m_toPanel.m_tableComboBox.setSelectedIndex(toTable);
+                m_toPanel.m_columnComboBox.setSelectedIndex(toColumn);
             }
 
             private String getCrossFilterBehavior() {
                 return ((SettingsModelString)m_crossFilterBehavior.getModel()).getStringValue();
-            }
-
-            private String getRelationshipFromColumn() {
-                return m_fromPanel.m_columnComboBox.getSelectedColumn();
-            }
-
-            private String getRelationshipToColumn() {
-                return m_toPanel.m_columnComboBox.getSelectedColumn();
-            }
-
-            private String getRelationshipFromTable() {
-                return ((TableSelection)m_fromPanel.m_tableComboBox.getSelectedItem()).m_tableName;
-            }
-
-            private String getRelationshipToTable() {
-                return ((TableSelection)m_toPanel.m_tableComboBox.getSelectedItem()).m_tableName;
             }
 
             @Override
@@ -1163,9 +1177,6 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
                 ColumnSelectionComboxBox m_columnComboBox;
 
-                /** From / To */
-                private final String m_label;
-
                 /**
                  * Pre-select the table name associated to this input port. Is 1 (first input table comes after auth
                  * port) for from panel and 2 for to panel.
@@ -1176,25 +1187,24 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                  * fired when {@link #m_tableComboBox} changes, excludes the selected table from the
                  * {@link ColumnSelectorPanel} passed to {@link #setFilterPanel(ColumnSelectorPanel)}
                  */
-                private transient ActionListener m_updateFilterTargetPanel;
+                private transient ItemListener m_updateFilterTargetPanel;
 
+                /**
+                 * Do not create an item for the table at the given port in the column selection combo box. Allows to
+                 * exclude the table that is selected in the from {@link ColumnSelectorPanel} from the table combo box
+                 * in the to {@link ColumnSelectorPanel}.
+                 */
                 private int m_skipPort = -1;
 
                 /**
                  *
+                 * @param defaultPortOffset preselected table
                  * @param borderTitle
-                 * @param defaultPortOffset the port for which to generate a
-                 * @param defaultTable nullable name of the table to select by default
-                 * @param defaultColumn nullable name of the column to select by default
                  */
-                private ColumnSelectorPanel(final String label, final int defaultPortOffset, final String defaultTable,
-                    final String defaultColumn, final ColumnSelectorPanel tofilterPanel) {
-                    m_label = label;
+                private ColumnSelectorPanel(final String label, final int defaultPortOffset) {
                     m_defaultPortOffset = defaultPortOffset;
-                    setFilterPanel(tofilterPanel);
                     setBorder(new TitledBorder(label));
                     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-                    createControls(defaultTable, defaultColumn, -1);
                 }
 
                 /**
@@ -1203,44 +1213,56 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                  * @param defaultTable nullable name of the table to preselect
                  * @param defaultColumn nullable name of the column to preselect
                  * @param skipPort port offset (zero based)
+                 * @return the table selected during initialization (either because defaultTable was found or
+                 *         m_defaultPortOffset was used instead)
                  */
                 @SuppressWarnings("unchecked")
-                private void createControls(final String defaultTable, final String defaultColumn, final int skipPort) {
+                private TableSelection createControls(final String defaultTable, final String defaultColumn,
+                    final int skipPort) {
 
                     m_skipPort = skipPort;
 
-                    // remove previous controls
                     removeAll();
-//                    JLabel label = new JLabel(m_label);
-//                    label.setPreferredSize(new Dimension(35, 20));
-//                    add(label);
 
-                    // Update the options and reselect
                     m_tableComboBox = new JComboBox<>();
+                    // fill table combo box
                     TableSelection selectedTable = populateTableComboBox(defaultTable, skipPort);
-                    m_tableComboBox.addActionListener(this::populateColumnComboBox);
-                    m_tableComboBox.addActionListener(m_updateFilterTargetPanel);
+                    m_tableComboBox.setSelectedItem(selectedTable);
+                    // add after restoring selection to avoid listeners firing in non-complete constructed environment
+                    m_tableComboBox.addItemListener(e -> {
+                        if (e.getStateChange() == ItemEvent.SELECTED) {
+                            populateColumnComboBox((TableSelection)m_tableComboBox.getSelectedItem());
+                        }
+                    });
                     add(m_tableComboBox);
 
                     m_columnComboBox = new ColumnSelectionComboxBox((Border)null, DataValue.class);
+                    ColumnComboBoxRenderer renderer = new ColumnComboBoxRenderer();
+                    renderer.attachTo(m_columnComboBox);
+                    populateColumnComboBox(selectedTable);
+                    // restore column selection
+                    if (defaultColumn != null) {
+                        DataColumnSpec colSpec =
+                            ((DataTableSpec)m_latestPortSpecs[selectedTable.m_portNumber]).getColumnSpec(defaultColumn);
+                        if (colSpec != null) {
+                            m_columnComboBox.setSelectedItem(colSpec);
+                        } else {
+                            // m_latestPortSpecs are outdated because they have changed without opening the dialog again
+                            m_columnComboBox.setSelectedIndex(-1);
+                        }
+                    }
                     add(m_columnComboBox);
 
-                    // restore selection (triggers population of column combo box)
-                    if(selectedTable != null) {
-                        m_tableComboBox.setSelectedItem(selectedTable);
-                    } else {
-                        m_tableComboBox.setSelectedIndex(0);
-                    }
+                    // when the table selection changes, update the available columns
+                    m_tableComboBox.addItemListener(m_updateFilterTargetPanel);
 
-                    // reselect default after population
-                    if (defaultColumn != null && selectedTable != null) {
-                        DataColumnSpec toSelect =
-                            ((DataTableSpec)m_latestPortSpecs[selectedTable.m_portNumber]).getColumnSpec(defaultColumn);
-                        m_columnComboBox.setSelectedItem(toSelect);
-                    }
+                    return selectedTable;
+
                 }
 
                 /**
+                 * Insert an option item for every table, except the one at port with offset `skipPort`
+                 *
                  * @param defaultTable name (as entered in table name in options panel = m_tableNamesCreate) of the
                  *            table to select
                  * @param skipPort port offset (zero based) to not add to the combo box (to table selector should not
@@ -1272,23 +1294,23 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                         // also skip the excluded port's associated table name text field
                         tableNameTextField++;
                     }
-                    return selected;
+                    return selected == null ? m_tableComboBox.getItemAt(0) : selected;
                 }
 
                 /**
-                 * Fill the column selection combo box with the columns available in the table selected via
-                 * {@link #m_tableComboBox}
+                 * Fill the column selection combo box with the columns available in the given table.
                  *
-                 * @param e
+                 * @param selected contains the name and port offset of the table to use the datatablespec of
                  */
-                private void populateColumnComboBox(final ActionEvent e) {
-                    TableSelection selected = (TableSelection)m_tableComboBox.getSelectedItem();
+                private void populateColumnComboBox(final TableSelection selected) {
+                    if (selected == null) {
+                        return;
+                    }
                     DataTableSpec portSpec = (DataTableSpec)m_latestPortSpecs[selected.m_portNumber];
                     try {
                         String tableName = m_tableNamesCreate[selected.m_portNumber - 1].getText() + " (Port "
                             + selected.m_portNumber + ")";
-                        m_columnComboBox.update(portSpec, null, false,
-                            getPowerBICompatibleColumnsFilter(tableName));
+                        m_columnComboBox.update(portSpec, null, false, getPowerBICompatibleColumnsFilter(tableName));
                         m_columnComboBox.setSelectedIndex(0);
                     } catch (NotConfigurableException ex) {
                         LOGGER.warn(ex);
@@ -1297,23 +1319,10 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                 }
 
                 /**
-                 * The table names associated to the input ports have changed. Update the elements of the table
-                 * selection combo box.
+                 * Create the listener that is attached to the table selection combo box: Upon selecting a table in this
+                 * panel, remove that table from the other panel's table selector.
                  *
-                 * @throws NotConfigurableException
-                 */
-                private void onTableNamesChange() {
-                    int selectedTab = m_tableComboBox.getSelectedIndex();
-                    int selectedCol = m_columnComboBox.getSelectedIndex();
-                    createControls(null, null, m_skipPort);
-                    m_tableComboBox.setSelectedIndex(selectedTab);
-                    m_columnComboBox.setSelectedIndex(selectedCol);
-                }
-
-                /**
-                 * Upon selecting a table this panel, remove that table from the other panel's table selector
-                 *
-                 * @param toColumnSelectorPanel
+                 * @param toColumnSelectorPanel the panel in which to remove the selected table
                  */
                 private void setFilterPanel(final ColumnSelectorPanel toColumnSelectorPanel) {
 
@@ -1321,26 +1330,19 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                         return;
                     }
 
-                    m_updateFilterTargetPanel = new ActionListener() {
-                        /**
-                         * remember the current selection to avoid destroying an existing selection by rebuilding the
-                         * other table/column panel
-                         */
-                        int m_previousSelected = -1;
-
-                        @Override
-                        public void actionPerformed(final ActionEvent e) {
-                            if (m_tableComboBox.getSelectedIndex() != m_previousSelected) {
-                                // don't include the current selected table in the to table selection combo box
-                                int skipPort = ((TableSelection)m_tableComboBox.getSelectedItem()).m_portNumber;
-                                toColumnSelectorPanel.createControls(null, null, skipPort);
-
-                                m_previousSelected = m_tableComboBox.getSelectedIndex();
-                            }
-
+                    /** Call when changing the selection of the from table combo box. */
+                    m_updateFilterTargetPanel = e -> {
+                        if (e.getStateChange() == ItemEvent.SELECTED) {
+                            // restore selection
+                            String selectedTable = toColumnSelectorPanel.getSelectedTableName();
+                            String selectedColumn = toColumnSelectorPanel.getSelectedColumnName().orElse(null);
+                            // don't include the current selected table in the to table selection combo box
+                            int skipPort = ((TableSelection)m_tableComboBox.getSelectedItem()).m_portNumber;
+                            toColumnSelectorPanel.createControls(selectedTable, selectedColumn, skipPort);
                         }
                     };
-                 }
+                    m_tableComboBox.addItemListener(m_updateFilterTargetPanel);
+                }
 
                 private ColumnFilter getPowerBICompatibleColumnsFilter(final String tableName) {
                     return new ColumnFilter() {
@@ -1356,6 +1358,16 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                         }
 
                     };
+                }
+
+                private String getSelectedTableName() {
+                    TableSelection selectedItem = (TableSelection)m_tableComboBox.getSelectedItem();
+                    return selectedItem == null ? null : selectedItem.m_tableName;
+                }
+
+                private Optional<String> getSelectedColumnName() {
+                    return m_columnComboBox.getSelectedIndex() == -1 ? Optional.empty()
+                        : Optional.of(m_columnComboBox.getSelectedColumn());
                 }
 
             }

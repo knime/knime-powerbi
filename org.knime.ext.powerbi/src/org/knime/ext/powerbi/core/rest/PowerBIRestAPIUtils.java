@@ -472,7 +472,7 @@ public final class PowerBIRestAPIUtils {
             String message;
             try {
                 final ErrorResponse error = GSON.fromJson(response.readEntity(String.class), ErrorResponse.class);
-                message = error.toString();
+                message = error == null ? "Unknown reason." : error.toString();
             } catch (final JsonSyntaxException | ProcessingException e) {
                 message = "Error occured during communicating with Power BI: " + statusInfo.getReasonPhrase()
                     + " (Error Code: " + statusInfo.getStatusCode() + ")";

@@ -50,15 +50,18 @@ package org.knime.ext.powerbi.base.nodes.send2;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.port.PortObjectSpec;
 import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 
 import com.google.common.base.Objects;
@@ -390,6 +393,50 @@ final class SendToPowerBINodeSettings2 {
             }
             rs.put(rel, relationshipNumber);
         }
+    }
+
+    /**
+     * Checks that the column names in the relationships appear in the corresponding tables. Note: it is not necessary
+     * to check that the ports (tables) referenced by a relationship still exist because those will be filtered out
+     * during execute anyways.
+     *
+     * @param inSpecs
+     * @throws InvalidSettingsException
+     */
+    void validateAgainst(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+
+        // table names state the user selected names for the tables at port 1, 2, ... (port 0 is for authentication)
+        String[] tableNames = getTableNames();
+        Map<String, Integer> nameToPort = new HashMap<>();
+        for (int i = 0; i < tableNames.length; i++) {
+            nameToPort.put(tableNames[i], i + 1);
+        }
+
+        // validate only those relationships referring to tables at still existing ports (because only those are sent)
+        Relationship[] toValidate = getRelationships(Arrays.copyOf(tableNames, inSpecs.length - 1));
+
+        // make sure every referenced column is still a valid column identifier
+        for (int i = 0; i < toValidate.length; i++) {
+
+            Relationship v = toValidate[i];
+
+            int fromPort = nameToPort.get(v.getFromTable());
+            DataTableSpec fromTable = (DataTableSpec)inSpecs[fromPort];
+            if (!fromTable.containsName(v.getFromColumn())) {
+                throw new InvalidSettingsException(String.format(
+                    "PowerBI relationship %s references source column %s in table %s (port %s) which does not exist.",
+                    i + 1, v.getFromColumn(), v.getFromTable(), fromPort));
+            }
+
+            int toPort = nameToPort.get(v.getToTable());
+            DataTableSpec toTable = (DataTableSpec)inSpecs[toPort];
+            if (!toTable.containsName(v.getToColumn())) {
+                throw new InvalidSettingsException(String.format(
+                    "PowerBI relationship %s references target column %s in table %s (port %s) which does not exist.",
+                    i + 1, v.getToColumn(), v.getToTable(), toPort));
+            }
+        }
+
     }
 
     /**
