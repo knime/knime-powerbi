@@ -70,6 +70,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
@@ -184,6 +185,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         m_updatingWorkspaceOptions = new AtomicBoolean(false);
         m_updatingDatasetOptions = new AtomicBoolean(false);
         addTab("Options", createDatasetTablePanel());
+        // after creation & before loading no port specs are available
+        m_relationshipsTab.disableEdit(RelationshipsTab.NO_PROPER_TABLES_CONNECTED);
         addTab("Relationships", m_relationshipsTab);
     }
 
@@ -217,6 +220,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         // Create new dataset
         m_createNewButton = new JRadioButton("Create new Dataset");
         panel.add(m_createNewButton, gbc);
+        m_createNewButton.setSelected(true);
 
         gbc.gridy++;
         gbc.gridx = 1;
@@ -243,13 +247,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         // Action listener for create new/append
         m_createNewButton.addActionListener(e -> enableDisableComboboxes());
         m_selectExisting.addActionListener(e -> enableDisableComboboxes());
-        ActionListener enableRelationships = e -> {
-            if(m_createNewButton.isSelected()) {
-                m_relationshipsTab.allowEdit();
-            } else {
-                m_relationshipsTab.disableEdit(RelationshipsTab.CANT_DEFINE_ON_EXISTING);
-            }
-        };
+        ActionListener enableRelationships = e -> m_relationshipsTab.checkEditable();
         m_createNewButton.addActionListener(enableRelationships);
         m_selectExisting.addActionListener(enableRelationships);
 
@@ -394,11 +392,14 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             m_settings.setTableNames(tableNamesCreate);
             m_settings.setDatasetNameDialog(datasetNameSelect);
             m_settings.setTableNamesDialog(tableNamesSelect);
-            m_settings.setRelationshipFromTables(m_relationshipsTab.getRelationshipFromTables());
-            m_settings.setRelationshipFromColumns(m_relationshipsTab.getRelationshipFromColumns());
-            m_settings.setRelationshipToTables(m_relationshipsTab.getRelationshipToTables());
-            m_settings.setRelationshipToColumns(m_relationshipsTab.getRelationshipToColumns());
-            m_settings.setRelationshipCrossfilterBehaviors(m_relationshipsTab.getRelationshipCrossfilterBehaviors());
+            if (m_relationshipsTab.checkEditable()) {
+                m_settings.setRelationshipFromTables(m_relationshipsTab.getRelationshipFromTables());
+                m_settings.setRelationshipFromColumns(m_relationshipsTab.getRelationshipFromColumns());
+                m_settings.setRelationshipToTables(m_relationshipsTab.getRelationshipToTables());
+                m_settings.setRelationshipToColumns(m_relationshipsTab.getRelationshipToColumns());
+                m_settings
+                    .setRelationshipCrossfilterBehaviors(m_relationshipsTab.getRelationshipCrossfilterBehaviors());
+            }
         } else {
             if (dataset == null) {
                 throw new InvalidSettingsException("Please select a dataset.");
@@ -420,17 +421,24 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     protected void loadSettingsFrom(final NodeSettingsRO settings, final PortObjectSpec[] specs)
         throws NotConfigurableException {
 
-        // Get the credentials
-        m_authProvider = getAuthTokenProvider(specs[0]);
-        try {
-            m_authProvider.getToken();
-            m_authenticated = true;
-            m_authWarning.setVisible(false);
-        } catch (final IOException e) {
-            m_authenticated = false;
-            m_authWarning.setVisible(true);
-            LOGGER.warn(e);
+        m_authenticated = false;
+
+        // if no authentication node is connected, the spec at port 0 will be null
+        if (specs[0] != null) {
+            try {
+                // Get the credentials
+                m_authProvider = getAuthTokenProvider(specs[0]);
+                m_authProvider.getToken();
+                m_authenticated = true;
+            } catch (final IOException e) {
+                LOGGER.warn(e);
+            } catch(final NotConfigurableException e) {
+                LOGGER.debug(e);
+            }
         }
+
+        // show warning if not able to authenticate
+        m_authWarning.setVisible(!m_authenticated);
 
         // Do not block dialog if problem occurs
         try {
@@ -501,7 +509,9 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         // Update which components are enabled
         enableDisableComboboxes();
-        updateWorkspaceOptions();
+        if(m_authenticated) {
+            updateWorkspaceOptions();
+        }
 
         // reflect the loaded settings in the UI
         m_relationshipsTab.loadSettingsFrom(specs);
@@ -866,6 +876,11 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         private static final String CANT_DEFINE_ON_EXISTING =
             "Relationships can only be defined when creating a new data set.";
 
+        /** When no tables are connected to the input ports, the column select combo boxes can not be populated. */
+        private static final String NO_PROPER_TABLES_CONNECTED =
+            "To define a relationship, connect at least two tables.\nEach table needs at most one column"
+                + " that has a type supported by Power BI.";
+
         private final JTextArea m_errorLabel = new JTextArea();
 
         private final List<RelationshipPanel> m_relationshipPanels = new ArrayList<>();
@@ -901,10 +916,38 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         }
 
         /**
-         * @param editable whether relationships should be editable or not
+         * Check whether the settings allow for editing relationships. If not, disable the panel.
+         * @return true if the relationship tab can be used to add/remove/edit relationships
          */
-        private void allowEdit() {
+        private boolean checkEditable() {
+
+            if (!m_createNewButton.isSelected()) {
+                disableEdit(CANT_DEFINE_ON_EXISTING);
+                return false;
+            }
+
+            if (m_latestPortSpecs == null) {
+                return false;
+            }
+
+            if (Arrays.stream(m_latestPortSpecs).filter(s -> s instanceof DataTableSpec).count() < 2) {
+                disableEdit("Relationships can only be defined between different tables.\n"
+                    + "Add another input port to add another table.");
+                return false;
+            }
+
+            // check that at least two tables with at least one column supported by Power BI each are connected
+            Predicate<DataColumnSpec> isSupportedType =
+                colSpec -> PowerBIDataTypeUtils.powerBITypeForKNIMEType(colSpec.getType()).isPresent();
+            Predicate<PortObjectSpec> hasSupportedColumn =
+                s -> s instanceof DataTableSpec && ((DataTableSpec)s).stream().filter(isSupportedType).count() > 0;
+            if (Arrays.stream(m_latestPortSpecs).filter(hasSupportedColumn).count() < 2) {
+                disableEdit(RelationshipsTab.NO_PROPER_TABLES_CONNECTED);
+                return false;
+            }
+
             ((CardLayout)getLayout()).show(this, CARD_LAYOUT_EDITABLE);
+            return true;
         }
 
         private void disableEdit(final String reason) {
@@ -952,16 +995,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
             m_latestPortSpecs = specs;
 
-            if (Arrays.stream(specs).filter(s -> s instanceof DataTableSpec).count() < 2) {
-                disableEdit("Relationships can only be defined between different tables. "
-                    + "Add another input port to add another table.");
-                return;
-            }
 
-            if (!m_createNewButton.isSelected()) {
-                disableEdit(CANT_DEFINE_ON_EXISTING);
-                return;
-            }
 
             String[] relationshipFromTables = m_settings.getRelationshipFromTables();
             String[] relationshipFromColumns = m_settings.getRelationshipFromColumns();
@@ -977,8 +1011,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                     relationshipCrossfilterBehaviors[i]);
             }
 
-            ((CardLayout)getLayout()).show(this, CARD_LAYOUT_EDITABLE);
-
+            checkEditable();
         }
 
         /**
@@ -1274,7 +1307,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                     TableSelection selected = null;
                     // zero based index for table name text fields
                     int tableNameTextField = 0;
-                    for (int portOffset = 0; portOffset < m_latestPortSpecs.length; portOffset++) {
+                    int ports = m_latestPortSpecs != null ? m_latestPortSpecs.length : 0;
+                    for (int portOffset = 0; portOffset < ports; portOffset++) {
                         // skip non-data ports (authentication port)
                         if (!(m_latestPortSpecs[portOffset] instanceof DataTableSpec)) {
                             continue;

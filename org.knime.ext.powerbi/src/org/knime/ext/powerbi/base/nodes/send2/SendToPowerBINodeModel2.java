@@ -170,11 +170,11 @@ final class SendToPowerBINodeModel2 extends NodeModel {
             final Map<String, Integer> columnIndexMap = getColumnIndexMap((DataTableSpec)inSpecs[i]);
             if (columnIndexMap.isEmpty()) {
                 throw new InvalidSettingsException("No column with a compatible datatype is available in table "
-                    + (i + 1) + ". See the node description for the list of supported datatypes.");
+                    + i + ". See the node description for the list of supported datatypes.");
             }
             // Check that there are no more than 75 columns
             if (columnIndexMap.size() > POWERBI_MAX_COLUMNS) {
-                throw new InvalidSettingsException("Table " + (i + 1) + " contains more columns ("
+                throw new InvalidSettingsException("Table " + i + " contains more columns ("
                     + columnIndexMap.size() + ") than supported by the Power BI API (" + POWERBI_MAX_COLUMNS + "). "
                     + " Please filter out unneeded columns.");
             }
