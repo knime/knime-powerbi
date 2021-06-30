@@ -112,6 +112,7 @@ import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
+import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.Groups;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
@@ -283,7 +284,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             gbc.gridx = 0;
             gbc.weightx = 1;
             // Table names
-            final String label = m_numberInputs == 1 ? "Table name" : "Table name " + (i + 1);
+            final String label = m_numberInputs == 1 ? "Table name" : ("Table name " + (i + 1));
             panel.add(new JLabel(label), gbc);
             gbc.gridx++;
             gbc.weightx = 3;
@@ -325,7 +326,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             gbc.gridx = 0;
             gbc.weightx = 1;
             // Table name
-            final String label = m_numberInputs == 1 ? "Table name" : "Table name " + (i + 1);
+            final String label = m_numberInputs == 1 ? "Table name" : ("Table name " + (i + 1));
             panel.add(new JLabel(label), gbc);
             gbc.gridx++;
             gbc.weightx = 3;
@@ -421,24 +422,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     protected void loadSettingsFrom(final NodeSettingsRO settings, final PortObjectSpec[] specs)
         throws NotConfigurableException {
 
-        m_authenticated = false;
-
-        // if no authentication node is connected, the spec at port 0 will be null
-        if (specs[0] != null) {
-            try {
-                // Get the credentials
-                m_authProvider = getAuthTokenProvider(specs[0]);
-                m_authProvider.getToken();
-                m_authenticated = true;
-            } catch (final IOException e) {
-                LOGGER.warn(e);
-            } catch(final NotConfigurableException e) {
-                LOGGER.debug(e);
-            }
-        }
-
-        // show warning if not able to authenticate
-        m_authWarning.setVisible(!m_authenticated);
+        tryAuthenticate(specs[0]);
 
         // Do not block dialog if problem occurs
         try {
@@ -515,6 +499,34 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         // reflect the loaded settings in the UI
         m_relationshipsTab.loadSettingsFrom(specs);
+    }
+
+    /**
+     * Try to get the authentication token from the given port. Set {@link SendToPowerBINodeDialog2#m_authenticated} to
+     * true on success, display a warning in the dialog otherwise.
+     *
+     * @param authPortSpec port spec of the port that is connected to node that provides the authentication, e.g.,
+     *            Microsoft Authentication node
+     */
+    private void tryAuthenticate(final PortObjectSpec authPortSpec) {
+        m_authenticated = false;
+
+        // if no authentication node is connected, the spec at port 0 will be null
+        if (authPortSpec != null) {
+            try {
+                // Get the credentials
+                m_authProvider = getAuthTokenProvider(authPortSpec);
+                m_authProvider.getToken();
+                m_authenticated = true;
+            } catch (final IOException e) {
+                LOGGER.warn(e);
+            } catch(final NotConfigurableException e) {
+                LOGGER.debug(e);
+            }
+        }
+
+        // show warning if not able to authenticate
+        m_authWarning.setVisible(!m_authenticated);
     }
 
     private static AuthTokenProvider getAuthTokenProvider(final PortObjectSpec spec) throws NotConfigurableException {
@@ -718,7 +730,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
         }
 
-        List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(d -> d.isAddRowsAPIEnabled())//
+        List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(Dataset::isAddRowsAPIEnabled)//
             .map(d -> createPowerBIDataset(d.getName(), d.getId(), false)) //
             .collect(Collectors.toList());
 
@@ -773,7 +785,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     }
 
     /** A Power BI Element to use in the combobox for the dataset, workspace and the tables (identified by the name) */
-    private static class PowerBIElement {
+    private static final class PowerBIElement {
 
         private final String m_name;
 
@@ -824,7 +836,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     }
 
     /** Default swing worker which uses a supplier and consumer */
-    private static class DefaultSwingWorker<T> extends SwingWorkerWithContext<T, Void> {
+    private static final class DefaultSwingWorker<T> extends SwingWorkerWithContext<T, Void> {
 
         private final ThrowingSupplier<T> m_backgroundJob;
 
