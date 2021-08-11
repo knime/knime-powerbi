@@ -197,8 +197,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         // Authentication warning if the user is not authenticated
         gbc.gridwidth = 2;
-        m_authWarning = new JLabel("Not authenticated. Please login in the 'Microsoft Authenticator' node.",
-            SharedIcons.ERROR.get(), SwingConstants.LEFT);
+        m_authWarning = new JLabel("", SharedIcons.ERROR.get(), SwingConstants.LEFT);
         m_authWarning.setForeground(Color.RED);
         m_authWarning.setVisible(false);
         panel.add(m_authWarning, gbc);
@@ -493,7 +492,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         // Update which components are enabled
         enableDisableComboboxes();
-        if(m_authenticated) {
+        if (m_authenticated) {
             updateWorkspaceOptions();
         }
 
@@ -510,6 +509,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
      */
     private void tryAuthenticate(final PortObjectSpec authPortSpec) {
         m_authenticated = false;
+        String authWarningText = "Not authenticated. Please login in the 'Microsoft Authentication' node.";
 
         // if no authentication node is connected, the spec at port 0 will be null
         if (authPortSpec != null) {
@@ -519,14 +519,19 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                 m_authProvider.getToken();
                 m_authenticated = true;
             } catch (final IOException e) {
+                authWarningText = "Could not get the token from the authentication. "
+                    + "Please re-authenticate in the 'Microsoft Authentication' node.";
                 LOGGER.warn(e);
-            } catch(final NotConfigurableException e) {
+            } catch (final NotConfigurableException e) {
+                authWarningText = e.getMessage();
                 LOGGER.debug(e);
             }
         }
 
         // show warning if not able to authenticate
+        m_authWarning.setText(authWarningText);
         m_authWarning.setVisible(!m_authenticated);
+
     }
 
     private static AuthTokenProvider getAuthTokenProvider(final PortObjectSpec spec) throws NotConfigurableException {
@@ -882,6 +887,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         /** Identifier for the panel that is shown when relationships are editable */
         private static final String CARD_LAYOUT_EDITABLE = "editable";
+
         /** Identifier for the panel that is shown when relationships are not */
         private static final String CARD_LAYOUT_UNAVAILABLE = "unavailable";
 
@@ -929,6 +935,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         /**
          * Check whether the settings allow for editing relationships. If not, disable the panel.
+         *
          * @return true if the relationship tab can be used to add/remove/edit relationships
          */
         private boolean checkEditable() {
@@ -1001,13 +1008,12 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
         /**
          * Create a relationship panel per each relationship in the node settings.
+         *
          * @param specs
          */
         private void loadSettingsFrom(final PortObjectSpec[] specs) {
 
             m_latestPortSpecs = specs;
-
-
 
             String[] relationshipFromTables = m_settings.getRelationshipFromTables();
             String[] relationshipFromColumns = m_settings.getRelationshipFromColumns();
@@ -1018,9 +1024,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             m_relationshipPanelsContainer.removeAll();
             m_relationshipPanels.clear();
             for (int i = 0; i < relationshipFromTables.length; i++) {
-                addRelationshipPanel(relationshipFromTables[i],
-                    relationshipFromColumns[i], relationshipToTables[i], relationshipToColumns[i],
-                    relationshipCrossfilterBehaviors[i]);
+                addRelationshipPanel(relationshipFromTables[i], relationshipFromColumns[i], relationshipToTables[i],
+                    relationshipToColumns[i], relationshipCrossfilterBehaviors[i]);
             }
 
             checkEditable();
@@ -1037,8 +1042,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
          * @param toColumn nullable default name of the target table's column
          * @param crossfilterBehavior nullable default cross filter behavior
          */
-        private void addRelationshipPanel(final String fromTable, final String fromColumn,
-            final String toTable, final String toColumn, final String crossfilterBehavior) {
+        private void addRelationshipPanel(final String fromTable, final String fromColumn, final String toTable,
+            final String toColumn, final String crossfilterBehavior) {
 
             String borderTitle = "Relationship " + (m_relationshipPanels.size() + 1);
 
@@ -1066,6 +1071,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
             // relabel the relationships according to their order of appearance
             m_relationshipPanels.forEach(new Consumer<RelationshipPanel>() {
                 int m_number = 1;
+
                 @Override
                 public void accept(final RelationshipPanel t) {
                     t.setBorder(new TitledBorder("Relationship " + m_number));
@@ -1141,6 +1147,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
             /**
              * Create
+             *
              * @param borderTitle description of the relationship
              * @param fromTable nullable default name of the selected table (the name entered by the user in the create
              *            data set section of the options tab)

@@ -129,7 +129,7 @@ final class SendToPowerBINodeModel2 extends NodeModel {
     /** Check if the given credentials can be used for Power BI, if not the error is returned in the Optional */
     static Optional<String> checkCredentials(final MicrosoftCredential credentials) {
         if (credentials == null) {
-            return Optional.of("Not authenticated. Please authenticate in the 'Microsoft Authenticator' node.");
+            return Optional.of("Not authenticated. Please authenticate in the 'Microsoft Authenticaton' node.");
         }
         if (!(credentials instanceof OAuth2Credential)) {
             return Optional.of("The Microsoft credential must be OAuth2. "
