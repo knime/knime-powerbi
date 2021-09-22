@@ -101,7 +101,7 @@ import org.knime.ext.powerbi.core.rest.bindings.Tables;
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 final class SendToPowerBINodeDialog extends NodeDialogPane {
 
     static final String DATASET_PLACEHOLDER = "-- Authenticate to select dataset --";

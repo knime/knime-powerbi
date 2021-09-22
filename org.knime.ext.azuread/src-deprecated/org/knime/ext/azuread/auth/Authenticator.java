@@ -60,7 +60,7 @@ import java.util.EventListener;
  * @param <T> The type of the authentication object managed by this Authenticator.
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 public interface Authenticator<T> {
 
     /**

@@ -76,7 +76,7 @@ import spark.Service;
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 public class AzureADAuthenticationUtils {
 
     /** The client id of the app registration */

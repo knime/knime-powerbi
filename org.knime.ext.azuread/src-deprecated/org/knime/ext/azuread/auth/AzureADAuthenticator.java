@@ -64,7 +64,7 @@ import org.knime.ext.azuread.auth.AzureADAuthenticationUtils.AuthenticationExcep
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 public class AzureADAuthenticator implements Authenticator<AzureADAuthentication> {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(AzureADAuthentication.class);

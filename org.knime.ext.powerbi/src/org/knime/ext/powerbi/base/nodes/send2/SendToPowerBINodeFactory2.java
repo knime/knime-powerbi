@@ -75,12 +75,14 @@ public final class SendToPowerBINodeFactory2 extends ConfigurableNodeFactory<Sen
 
     @Override
     protected SendToPowerBINodeModel2 createNodeModel(final NodeCreationConfiguration creationConfig) {
-        return new SendToPowerBINodeModel2(creationConfig.getPortConfig().get());
+        return new SendToPowerBINodeModel2( //
+            creationConfig.getPortConfig().get() // NOSONAR: Always present because we return something in createPortsConfigBuilder
+        );
     }
 
     @Override
     protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
-        return new SendToPowerBINodeDialog2(creationConfig.getPortConfig().get().getInputPorts().length - 1);
+        return new SendToPowerBINodeDialog2(creationConfig.getPortConfig().get().getInputPorts().length - 1); // NOSONAR
     }
 
     @Override

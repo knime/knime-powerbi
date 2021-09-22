@@ -63,7 +63,7 @@ import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 class AzureADAuthTokenSupplier implements AuthTokenProvider {
 
     private static final long MIN_TOKEN_VALID_TIME = 60000; // 1min
@@ -93,7 +93,7 @@ class AzureADAuthTokenSupplier implements AuthTokenProvider {
         if (System.currentTimeMillis() + MIN_TOKEN_VALID_TIME > auth.getValidUntil()) {
             try {
                 AzureADAuthenticationUtils.refreshToken(auth);
-            } catch (final AuthenticationException | InterruptedException e) {
+            } catch (final AuthenticationException e) {
                 if (e.getCause() instanceof UnknownHostException) {
                     throw new IOException(
                         "Cannot connect to Microsoft. Please make sure to have an active internet connection.", e);
@@ -101,6 +101,9 @@ class AzureADAuthTokenSupplier implements AuthTokenProvider {
                 throw new IOException(
                     "The access token is not valid anymore and could not be updated. Please update the authentication.",
                     e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Refreshing the access token was interrupted.", e);
             }
         }
     }

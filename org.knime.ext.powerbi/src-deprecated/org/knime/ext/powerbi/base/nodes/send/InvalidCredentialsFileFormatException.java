@@ -54,7 +54,7 @@ package org.knime.ext.powerbi.base.nodes.send;
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 final class InvalidCredentialsFileFormatException extends Exception {
 
     private static final long serialVersionUID = 1L;

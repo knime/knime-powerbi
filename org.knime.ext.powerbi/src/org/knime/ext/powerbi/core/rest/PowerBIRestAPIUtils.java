@@ -192,8 +192,9 @@ public final class PowerBIRestAPIUtils {
      * @param tables the table definitions of the dataset
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @deprecated use {@link #postDataset(AuthTokenProvider, String, String, String, Table[], Relationship[])}
      */
-    @Deprecated
+    @Deprecated(since = "4.4", forRemoval = false)
     public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
         final String defaultMode, final Table[] tables) throws PowerBIResponseException {
         final Map<String, Object> body = new HashMap<>(2);

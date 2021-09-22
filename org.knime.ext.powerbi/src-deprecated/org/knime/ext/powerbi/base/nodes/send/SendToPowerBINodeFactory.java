@@ -63,7 +63,7 @@ import org.knime.core.node.port.PortType;
  * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 public final class SendToPowerBINodeFactory extends ConfigurableNodeFactory<SendToPowerBINodeModel> {
 
     @Override

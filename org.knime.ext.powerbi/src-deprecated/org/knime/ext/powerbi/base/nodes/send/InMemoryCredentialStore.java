@@ -59,7 +59,7 @@ import org.knime.ext.azuread.auth.AzureADAuthentication;
  * @author David Kolb, KNIME GmbH, Konstanz, Germany
  * @deprecated
  */
-@Deprecated
+@Deprecated(since = "4.4", forRemoval = false)
 final class InMemoryCredentialStore {
 
     private static InMemoryCredentialStore m_instance;

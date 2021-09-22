@@ -865,7 +865,10 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         protected void doneWithContext() {
             try {
                 m_doneJob.accept(get());
-            } catch (final InterruptedException | ExecutionException e) {
+            } catch (final ExecutionException e) {
+                LOGGER.warn(m_exceptionText, e);
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
                 LOGGER.warn(m_exceptionText, e);
             }
         }
@@ -873,7 +876,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
     @FunctionalInterface
     private static interface ThrowingSupplier<T> {
-        T get() throws Exception;
+        // Used in the SwingWorker where doBackgroundWithContext throws any Exception so this can throw any Exception as well
+        T get() throws Exception; // NOSONAR: See comment above
     }
 
     /**
