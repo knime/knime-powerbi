@@ -72,7 +72,7 @@ public final class ErrorResponse {
      * @return the error
      */
     public Error getError() {
-        return error;
+        return error != null ? error : new Error("Unspecified", "Unspecified", null);
     }
 
     /**
@@ -96,7 +96,7 @@ public final class ErrorResponse {
         @Override
         public String toString() {
             return "Error: " + getMessage() + ", Code: " + getCode() + //
-                (getDetails() != null ? ", Details: " + Arrays.toString(getDetails()) : "");
+                (getDetails() != null ? (", Details: " + Arrays.toString(getDetails())) : "");
         }
 
         /**
