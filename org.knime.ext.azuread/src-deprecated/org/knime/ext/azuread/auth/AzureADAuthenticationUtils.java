@@ -51,24 +51,31 @@ package org.knime.ext.azuread.auth;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
+
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.knime.core.node.NodeLogger;
 import org.knime.core.util.DesktopUtil;
 
 import com.github.scribejava.apis.MicrosoftAzureActiveDirectory20Api;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
+import com.google.common.base.Strings;
 import com.google.common.util.concurrent.AbstractFuture;
-
-import spark.Request;
-import spark.Service;
 
 /**
  * Static utility class to authenticate with Azure Active Directory.
@@ -78,6 +85,8 @@ import spark.Service;
  */
 @Deprecated
 public class AzureADAuthenticationUtils {
+
+    private static final NodeLogger LOGGER =  NodeLogger.getLogger(AzureADAuthenticationUtils.class);
 
     /** The client id of the app registration */
     private static final String CLIENT_ID = "cf47ff49-7da6-4603-b339-f4475176432b";
@@ -131,32 +140,15 @@ public class AzureADAuthenticationUtils {
             .callback(OAUTH_CALLBACK_URL) //
             .build(MicrosoftAzureActiveDirectory20Api.instance());
 
-        // Open the callback webserver
-        final Service callbackServer = Service.ignite().port(OAUTH_CALLBACK_PORT);
-        callbackServer.get(OAUTH_LISTENER_PATH, (request, resp) -> {
-            try {
-                // Get the auth code
-                final Optional<String> authCode = getAuthCodeFromRequest(request);
+        var callbackServer = new Server(OAUTH_CALLBACK_PORT);
+        var callbackHandler = new OAuthCallbackHandler(service, authFuture);
+        callbackServer.setHandler(callbackHandler);
+        try {
+            callbackServer.start();
+        } catch (Exception ex) {
+            throw new AuthenticationException("Could not start callback server: " + ex.getMessage(), ex);
+        }
 
-                if (authCode.isPresent()) {
-                    // Request a token
-                    final long requestTime = System.currentTimeMillis();
-                    final OAuth2AccessToken accessToken = service.getAccessToken(authCode.get());
-
-                    // Set the future result
-                    authFuture.setResult(new DefaultAzureADAuthentication(accessToken.getAccessToken(),
-                        requestTime + accessToken.getExpiresIn() * 1000, accessToken.getRefreshToken()));
-
-                    return OAUTH_SUCCESS_PAGE;
-                } else {
-                    final String error = getErrorFromRequest(request);
-                    throw new AuthenticationException(error);
-                }
-            } catch (final Throwable t) {
-                authFuture.setFailed(t);
-                return OAUTH_ERROR_PAGE + t.getMessage();
-            }
-        });
 
         try {
             // Start a thread which closes the service and everything once the authentication is done
@@ -181,9 +173,62 @@ public class AzureADAuthenticationUtils {
         return authFuture;
     }
 
+    @SuppressWarnings("resource") // we must not close the servlet output stream
+    private static class OAuthCallbackHandler extends AbstractHandler {
+
+        private final AzureADAuthenticationFuture m_authFuture;
+
+        private final OAuth20Service m_service;
+
+        OAuthCallbackHandler(final OAuth20Service service, final AzureADAuthenticationFuture authFuture) {
+            m_service = service;
+            m_authFuture = authFuture;
+        }
+
+        @Override
+        public void handle(final String target, final Request baseRequest, final HttpServletRequest request,
+            final HttpServletResponse response) throws IOException, ServletException {
+            if (!OAUTH_LISTENER_PATH.equals(target)) {
+                response.sendError(404);
+                return;
+            }
+
+            try {
+                // Get the auth code
+                final Optional<String> authCode = getAuthCodeFromRequest(request);
+                if (authCode.isPresent()) {
+                    // Request a token
+                    final long requestTime = System.currentTimeMillis();
+                    final OAuth2AccessToken accessToken = m_service.getAccessToken(authCode.get());
+
+                    // Set the future result
+                    m_authFuture.setResult(new DefaultAzureADAuthentication(accessToken.getAccessToken(),
+                            requestTime + accessToken.getExpiresIn() * 1000, accessToken.getRefreshToken()));
+
+                    configureResponse(response, 200, OAUTH_SUCCESS_PAGE);
+                } else {
+                    throw new AuthenticationException(getErrorFromRequest(request));
+                }
+            } catch (final Throwable t) {
+                m_authFuture.setFailed(t);
+                configureResponse(response, 400, OAUTH_ERROR_PAGE + t.getMessage());
+            }
+            response.getOutputStream().flush();
+        }
+    }
+
+    @SuppressWarnings("resource") // we must not close the servlet output stream
+    private static void configureResponse(final HttpServletResponse response, final int status, final String message)
+            throws IOException {
+        response.setContentType(MediaType.TEXT_HTML);
+        response.setStatus(status);
+        response.getOutputStream().write(message.getBytes(StandardCharsets.UTF_8));
+    }
+
+
     /** Starts a thread which waits until the future is done and closes the service and stops the callback server */
     private static void startClosingThread(final Future<AzureADAuthentication> authFuture, final OAuth20Service service,
-        final Service callbackServer) {
+        final Server callbackServer) {
         new Thread(() -> {
             // Wait until the authentication is done
             try {
@@ -201,48 +246,46 @@ public class AzureADAuthenticationUtils {
                 // Ignore
             }
             // Check that everything gets closed and stopped correctly
-            callbackServer.stop();
+            try {
+                callbackServer.stop();
+            } catch (Exception ex) {
+                LOGGER.warn("Could not stop OAuth callback server" +  ex.getMessage(), ex);
+            }
             OAUTH_IN_PROGRESS.set(false);
         }).start();
 
     }
 
     /** Get the auth code from the parameters of a request */
-    private static Optional<String> getAuthCodeFromRequest(final Request request) {
-        if (request.queryParams().contains("code")) {
-            final String authCode = request.queryParamsValues("code")[0];
-            if (!authCode.trim().isEmpty()) {
-                return Optional.of(authCode);
-            }
-        }
-        return Optional.empty();
+    private static Optional<String> getAuthCodeFromRequest(final HttpServletRequest request) {
+        return Optional.ofNullable(request.getParameter("code")).map(Strings::emptyToNull);
     }
 
     /** Parses the error from the request parameters (if present) and returns a formated error string */
-    private static String getErrorFromRequest(final Request request) {
-        final StringBuilder error = new StringBuilder();
-        final Set<String> params = request.queryParams();
+    private static String getErrorFromRequest(final HttpServletRequest request) {
+        final StringBuilder errorMessage = new StringBuilder();
 
         // Error parameter
-        if (params.contains("error")) {
-            final String[] errors = request.queryParamsValues("error");
-            if (errors.length > 1) {
-                error.append("Errors: ").append(Arrays.toString(errors));
-            } else if (errors.length == 1) {
-                error.append("Error: ").append(errors[0]);
+        var errorParamValues = request.getParameterValues("error");
+        if (errorParamValues != null) {
+            if (errorParamValues.length > 1) {
+                errorMessage.append("Errors: ").append(Arrays.toString(errorParamValues));
+            } else if (errorParamValues.length == 1) {
+                errorMessage.append("Error: ").append(errorParamValues[0]);
             }
         }
 
         // Error description parameter
-        if (params.contains("error_description")) {
-            final String[] errors = request.queryParamsValues("error_description");
-            if (errors.length > 1) {
-                error.append("\nError descriptions: ").append(Arrays.toString(errors));
-            } else if (errors.length == 1) {
-                error.append("\nError description: ").append(errors[0]);
+        var errorDescParamValues = request.getParameterValues("error_description");
+        if (errorDescParamValues != null) {
+            if (errorDescParamValues.length > 1) {
+                errorMessage.append("\nError descriptions: ").append(Arrays.toString(errorDescParamValues));
+            } else if (errorDescParamValues.length == 1) {
+                errorMessage.append("\nError description: ").append(errorDescParamValues[0]);
             }
         }
-        return error.toString();
+
+        return errorMessage.toString();
     }
 
     /**
