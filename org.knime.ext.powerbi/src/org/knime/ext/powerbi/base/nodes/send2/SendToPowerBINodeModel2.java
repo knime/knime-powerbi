@@ -135,7 +135,9 @@ final class SendToPowerBINodeModel2 extends NodeModel {
             return Optional.of("The Microsoft credential must be OAuth2. "
                 + "Please use 'Interactive authentication' or 'Username/password' authentication in the 'Microsoft Authentication' node.");
         }
-        if (!((OAuth2Credential)credentials).getScopes().contains(Scope.POWER_BI.getScope())) {
+
+        final var validScopes = Set.of(Scope.POWER_BI.getScope(), Scope.POWER_BI_APP.getScope());
+        if (((OAuth2Credential)credentials).getScopes().stream().anyMatch(s -> !validScopes.contains(s))) {
             return Optional.of("The credentials do not provide access to Power BI. "
                 + "Please select 'Power BI' in the 'Microsoft Authentication' node.");
         }
