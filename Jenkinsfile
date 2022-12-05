@@ -16,6 +16,12 @@ try {
     // provide the name of the update site project
     knimetools.defaultTychoBuild('org.knime.update.powerbi')
 
+    workflowTests.runTests(
+        dependencies: [
+            repositories:  ['knime-powerbi', 'knime-office365']
+        ]
+    )
+
     stage('Sonarqube analysis') {
         env.lastStage = env.STAGE_NAME
 		// TODO remove empty list once workflow tests are enabled
