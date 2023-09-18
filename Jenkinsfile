@@ -18,7 +18,11 @@ try {
 
     workflowTests.runTests(
         dependencies: [
-            repositories:  ['knime-powerbi', 'knime-office365']
+            repositories:  [
+                'knime-gateway',
+                'knime-credentials-base',
+                'knime-powerbi',
+                'knime-office365']
         ]
     )
 
