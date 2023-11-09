@@ -105,9 +105,7 @@ import org.knime.core.node.util.ColumnFilter;
 import org.knime.core.node.util.ColumnSelectionComboxBox;
 import org.knime.core.node.util.SharedIcons;
 import org.knime.core.util.SwingWorkerWithContext;
-import org.knime.ext.microsoft.authentication.port.MicrosoftCredential;
-import org.knime.ext.microsoft.authentication.port.MicrosoftCredentialPortObjectSpec;
-import org.knime.ext.microsoft.authentication.port.oauth2.OAuth2Credential;
+import org.knime.credentials.base.NoSuchCredentialException;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
@@ -505,11 +503,11 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
      * true on success, display a warning in the dialog otherwise.
      *
      * @param authPortSpec port spec of the port that is connected to node that provides the authentication, e.g.,
-     *            Microsoft Authentication node
+     *            Microsoft Authenticator node
      */
     private void tryAuthenticate(final PortObjectSpec authPortSpec) {
         m_authenticated = false;
-        String authWarningText = "Not authenticated. Please login in the 'Microsoft Authentication' node.";
+        String authWarningText = "Not authenticated. Please login in the 'Microsoft Authenticator' node.";
 
         // if no authentication node is connected, the spec at port 0 will be null
         if (authPortSpec != null) {
@@ -520,7 +518,7 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
                 m_authenticated = true;
             } catch (final IOException e) {
                 authWarningText = "Could not get the token from the authentication. "
-                    + "Please re-authenticate in the 'Microsoft Authentication' node.";
+                    + "Please re-authenticate in the 'Microsoft Authenticator' node.";
                 LOGGER.warn(e);
             } catch (final NotConfigurableException e) {
                 authWarningText = e.getMessage();
@@ -531,16 +529,15 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
         // show warning if not able to authenticate
         m_authWarning.setText(authWarningText);
         m_authWarning.setVisible(!m_authenticated);
-
     }
 
     private static AuthTokenProvider getAuthTokenProvider(final PortObjectSpec spec) throws NotConfigurableException {
-        final MicrosoftCredential credentials = ((MicrosoftCredentialPortObjectSpec)spec).getMicrosoftCredential();
-        final Optional<String> checkResult = SendToPowerBINodeModel2.checkCredentials(credentials);
-        if (checkResult.isPresent()) {
-            throw new NotConfigurableException(checkResult.get());
+        try {
+            var credential = SendToPowerBINodeModel2.getCredential(spec);
+            return credential::getAccessToken;
+        } catch(NoSuchCredentialException e) {
+            throw new NotConfigurableException(e.getMessage());
         }
-        return new TokenSupplier((OAuth2Credential)credentials);
     }
 
     /* -------------------------------------- Handling changes ---------------------------- */

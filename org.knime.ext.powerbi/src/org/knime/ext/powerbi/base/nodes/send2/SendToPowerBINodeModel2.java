@@ -76,10 +76,9 @@ import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.util.ConvenienceMethods;
-import org.knime.ext.microsoft.authentication.port.MicrosoftCredential;
-import org.knime.ext.microsoft.authentication.port.MicrosoftCredentialPortObjectSpec;
-import org.knime.ext.microsoft.authentication.port.oauth2.OAuth2Credential;
-import org.knime.ext.microsoft.authentication.port.oauth2.Scope;
+import org.knime.credentials.base.CredentialPortObjectSpec;
+import org.knime.credentials.base.NoSuchCredentialException;
+import org.knime.credentials.base.oauth.api.JWTCredential;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils.PowerBIIllegalValueException;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
@@ -126,24 +125,6 @@ final class SendToPowerBINodeModel2 extends NodeModel {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(SendToPowerBINodeModel2.class);
 
-    /** Check if the given credentials can be used for Power BI, if not the error is returned in the Optional */
-    static Optional<String> checkCredentials(final MicrosoftCredential credentials) {
-        if (credentials == null) {
-            return Optional.of("Not authenticated. Please authenticate in the 'Microsoft Authenticaton' node.");
-        }
-        if (!(credentials instanceof OAuth2Credential)) {
-            return Optional.of("The Microsoft credential must be OAuth2. "
-                + "Please use 'Interactive authentication' or 'Username/password' authentication in the 'Microsoft Authentication' node.");
-        }
-
-        final var validScopes = Set.of(Scope.POWER_BI.getScope(), Scope.POWER_BI_APP.getScope());
-        if (((OAuth2Credential)credentials).getScopes().stream().anyMatch(s -> !validScopes.contains(s))) {
-            return Optional.of("The credentials do not provide access to Power BI. "
-                + "Please select 'Power BI' in the 'Microsoft Authentication' node.");
-        }
-        return Optional.empty();
-    }
-
     private final SendToPowerBINodeSettings2 m_settings;
 
     SendToPowerBINodeModel2(final PortsConfiguration portsConfiguration) {
@@ -153,8 +134,12 @@ final class SendToPowerBINodeModel2 extends NodeModel {
 
     @Override
     protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
-        // Check if the user is authenticated
-        getCredentials(inSpecs[0]);
+
+        try {
+            getCredential(inSpecs[0]);
+        } catch (NoSuchCredentialException ex) {
+            throw new InvalidSettingsException(ex.getMessage());
+        }
 
         // Check if a table name for each table is configured
         if (inSpecs.length - 1 > m_settings.getTableNames().length) {
@@ -193,9 +178,9 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         final ExecutionMonitor execPrepare = exec.createSubProgress(PROGRESS_PREPARE);
         execPrepare.setMessage("Checking for exisiting datasets");
 
-        // Get the credentials
-        final OAuth2Credential credentials = getCredentials(inObjects[0].getSpec());
-        final AuthTokenProvider auth = new TokenSupplier(credentials);
+        // Get the credential
+        final var credential = getCredential(inObjects[0].getSpec());
+        final AuthTokenProvider auth = credential::getAccessToken;
 
         // Get the input tables
         final BufferedDataTable[] inData =
@@ -307,15 +292,9 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         exec.setProgress(1);
     }
 
-    /** Get the {@link OAuth2Credential} form the port. Also checks if it can be used. */
-    private static OAuth2Credential getCredentials(final PortObjectSpec authPortSpec) throws InvalidSettingsException {
-        final MicrosoftCredential credentials =
-            ((MicrosoftCredentialPortObjectSpec)authPortSpec).getMicrosoftCredential();
-        final Optional<String> checkResult = checkCredentials(credentials);
-        if (checkResult.isPresent()) {
-            throw new InvalidSettingsException(checkResult.get());
-        }
-        return (OAuth2Credential)credentials;
+    /** Get the {@link JWTCredential} form the port. Also checks if it can be used. */
+    static JWTCredential getCredential(final PortObjectSpec inSpec) throws NoSuchCredentialException {
+        return ((CredentialPortObjectSpec)inSpec).resolveCredential(JWTCredential.class);
     }
 
     /** Deletes all rows from the given tables from the given dataset */

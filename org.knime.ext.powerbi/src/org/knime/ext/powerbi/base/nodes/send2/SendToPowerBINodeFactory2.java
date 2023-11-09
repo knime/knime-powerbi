@@ -56,7 +56,7 @@ import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeView;
 import org.knime.core.node.context.NodeCreationConfiguration;
 import org.knime.core.node.port.PortType;
-import org.knime.ext.microsoft.authentication.port.MicrosoftCredentialPortObject;
+import org.knime.credentials.base.CredentialPortObject;
 
 /**
  * Send to Power BI factory.
@@ -68,7 +68,7 @@ public final class SendToPowerBINodeFactory2 extends ConfigurableNodeFactory<Sen
     @Override
     protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
         final PortsConfigurationBuilder b = new PortsConfigurationBuilder();
-        b.addFixedInputPortGroup("auth", MicrosoftCredentialPortObject.TYPE);
+        b.addFixedInputPortGroup("auth", CredentialPortObject.TYPE);
         b.addExtendableInputPortGroup("input", new PortType[]{BufferedDataTable.TYPE}, BufferedDataTable.TYPE);
         return Optional.of(b);
     }
