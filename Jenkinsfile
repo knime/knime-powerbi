@@ -21,6 +21,7 @@ try {
             repositories:  [
                 'knime-gateway',
                 'knime-credentials-base',
+                'knime-js-base',
                 'knime-powerbi',
                 'knime-office365']
         ]
