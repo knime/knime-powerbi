@@ -14,13 +14,14 @@ properties([
 
 try {
     // provide the name of the update site project
-    knimetools.defaultTychoBuild('org.knime.update.powerbi')
+    // knimetools.defaultTychoBuild('org.knime.update.powerbi')
 
     workflowTests.runTests(
         dependencies: [
             repositories:  [
                 'knime-gateway',
                 'knime-credentials-base',
+                'knime-js-base',
                 'knime-powerbi',
                 'knime-office365']
         ]
