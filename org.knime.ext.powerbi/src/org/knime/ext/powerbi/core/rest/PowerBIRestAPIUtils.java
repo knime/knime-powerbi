@@ -62,6 +62,8 @@ import org.knime.ext.powerbi.core.rest.bindings.Groups;
 import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
+import org.knime.core.util.ThreadLocalHTTPAuthenticator;
+import org.knime.core.util.ThreadLocalHTTPAuthenticator.AuthenticationCloseable;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -424,7 +426,8 @@ public final class PowerBIRestAPIUtils {
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
-        try (final Response response = client.get()) {
+        try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
+            final Response response = client.get()) {
             return checkResponse(response, responseType);
         }
     }
@@ -435,7 +438,8 @@ public final class PowerBIRestAPIUtils {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
-        try (final Response response = client.post(body)) {
+        try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
+            final Response response = client.post(body)) {
             return checkResponse(response, responseType);
         }
     }
@@ -445,7 +449,8 @@ public final class PowerBIRestAPIUtils {
         throws PowerBIResponseException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
-        try (final Response response = client.delete()) {
+        try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
+            final Response response = client.delete()) {
             return checkResponse(response, responseType);
         }
     }
@@ -456,7 +461,8 @@ public final class PowerBIRestAPIUtils {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
-        try (final Response response = client.put(body)) {
+        try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
+            final Response response = client.put(body)) {
             return checkResponse(response, responseType);
         }
     }
