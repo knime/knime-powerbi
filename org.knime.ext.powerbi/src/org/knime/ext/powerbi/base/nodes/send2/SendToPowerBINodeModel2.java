@@ -76,9 +76,8 @@ import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.util.ConvenienceMethods;
+import org.knime.credentials.base.CredentialPortObject;
 import org.knime.credentials.base.CredentialPortObjectSpec;
-import org.knime.credentials.base.NoSuchCredentialException;
-import org.knime.credentials.base.oauth.api.JWTCredential;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils;
 import org.knime.ext.powerbi.core.PowerBIDataTypeUtils.PowerBIIllegalValueException;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
@@ -90,6 +89,7 @@ import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
+import org.knime.ext.powerbi.util.PowerBICredentialUtil;
 
 import com.google.gson.Gson;
 
@@ -135,11 +135,8 @@ final class SendToPowerBINodeModel2 extends NodeModel {
     @Override
     protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
 
-        try {
-            getCredential(inSpecs[0]);
-        } catch (NoSuchCredentialException ex) {
-            throw new InvalidSettingsException(ex.getMessage());
-        }
+        final var credSpec = (CredentialPortObjectSpec) inSpecs[0];
+        PowerBICredentialUtil.validateCredentialOnConfigure(credSpec);
 
         // Check if a table name for each table is configured
         if (inSpecs.length - 1 > m_settings.getTableNames().length) {
@@ -179,8 +176,8 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         execPrepare.setMessage("Checking for exisiting datasets");
 
         // Get the credential
-        final var credential = getCredential(inObjects[0].getSpec());
-        final AuthTokenProvider auth = credential::getAccessToken;
+        final var credSpec = ((CredentialPortObject) inObjects[0]).getSpec();
+        final AuthTokenProvider auth = PowerBICredentialUtil.toAccessTokenAccessor(credSpec)::getAccessToken;
 
         // Get the input tables
         final BufferedDataTable[] inData =
@@ -290,11 +287,6 @@ final class SendToPowerBINodeModel2 extends NodeModel {
         // Send the last rows
         PowerBIRestAPIUtils.postRows(auth, workspaceId, datasetId, tableName, rowBuilder.toString());
         exec.setProgress(1);
-    }
-
-    /** Get the {@link JWTCredential} form the port. Also checks if it can be used. */
-    static JWTCredential getCredential(final PortObjectSpec inSpec) throws NoSuchCredentialException {
-        return ((CredentialPortObjectSpec)inSpec).resolveCredential(JWTCredential.class);
     }
 
     /** Deletes all rows from the given tables from the given dataset */
