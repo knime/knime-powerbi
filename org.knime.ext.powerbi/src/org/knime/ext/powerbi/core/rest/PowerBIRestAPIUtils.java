@@ -54,6 +54,10 @@ import java.util.Map;
 
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.transport.http.HTTPConduit;
+import org.knime.core.node.CanceledExecutionException;
+import org.knime.core.node.ExecutionContext;
+import org.knime.core.util.ThreadLocalHTTPAuthenticator;
+import org.knime.core.util.ThreadLocalHTTPAuthenticator.AuthenticationCloseable;
 import org.knime.ext.powerbi.core.rest.bindings.Column;
 import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
@@ -62,8 +66,6 @@ import org.knime.ext.powerbi.core.rest.bindings.Groups;
 import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
-import org.knime.core.util.ThreadLocalHTTPAuthenticator;
-import org.knime.core.util.ThreadLocalHTTPAuthenticator.AuthenticationCloseable;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -136,11 +138,15 @@ public final class PowerBIRestAPIUtils {
      * Calls "Datasets - Get Datasets" from the Power BI REST API.
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return a {@link Datasets} object which contains a list of datasets
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static Datasets getDatasets(final AuthTokenProvider auth) throws PowerBIResponseException {
-        return get(GET_DATASETS_URI, Datasets.class, auth);
+    public static Datasets getDatasets(final AuthTokenProvider auth, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
+        return get(GET_DATASETS_URI, Datasets.class, auth, exec);
     }
 
     /**
@@ -148,16 +154,19 @@ public final class PowerBIRestAPIUtils {
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return a {@link Datasets} object which contains a list of datasets
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static Datasets getDatasets(final AuthTokenProvider auth, final String groupId)
-        throws PowerBIResponseException {
+    public static Datasets getDatasets(final AuthTokenProvider auth, final String groupId, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            return getDatasets(auth);
+            return getDatasets(auth, exec);
         }
         final String uri = UriBuilder.fromPath(GET_DATASETS_IN_GROUP_URI).build(groupId).toString();
-        return get(uri, Datasets.class, auth);
+        return get(uri, Datasets.class, auth, exec);
     }
 
     /**
@@ -168,43 +177,51 @@ public final class PowerBIRestAPIUtils {
      * @param defaultMode the mode of the dataset
      * @param tables the table definitions of the dataset
      * @param relationships nullable array of column relationships
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static Dataset postDataset(final AuthTokenProvider auth, final String datasetName, final String defaultMode,
-        final Table[] tables, final Relationship[] relationships) throws PowerBIResponseException {
+        final Table[] tables, final Relationship[] relationships, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
-        if(relationships != null && relationships.length > 0) {
+        if (relationships != null && relationships.length > 0) {
             body.put("relationships", relationships);
         }
-        return post(POST_DATASET_URI, Dataset.class, GSON.toJson(body), auth);
+        return post(POST_DATASET_URI, Dataset.class, GSON.toJson(body), auth, exec);
     }
 
     /**
-     * This is the frozen version used by the deprecated node.
-     * Calls "Push Datasets - Datasets PostDatasetInGroup" from the Power BI REST API.
+     * This is the frozen version used by the deprecated node. Calls "Push Datasets - Datasets PostDatasetInGroup" from
+     * the Power BI REST API.
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
      * @param datasetName the name of the dataset
      * @param defaultMode the mode of the dataset
      * @param tables the table definitions of the dataset
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     @Deprecated
     public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
-        final String defaultMode, final Table[] tables) throws PowerBIResponseException {
+        final String defaultMode, final Table[] tables, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
         String uri = groupId == null ? POST_DATASET_URI
             : UriBuilder.fromPath(POST_DATASET_IN_GROUP_URI).build(groupId).toString();
-        return post(uri, Dataset.class, GSON.toJson(body), auth);
+        return post(uri, Dataset.class, GSON.toJson(body), auth, exec);
     }
 
     /**
@@ -216,23 +233,27 @@ public final class PowerBIRestAPIUtils {
      * @param defaultMode the mode of the dataset
      * @param tables the table definitions of the dataset
      * @param relationships nullable array of PowerBI relationship entitites
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the created dataset
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static Dataset postDataset(final AuthTokenProvider auth, final String groupId, final String datasetName,
-        final String defaultMode, final Table[] tables, final Relationship[] relationships) throws PowerBIResponseException {
+        final String defaultMode, final Table[] tables, final Relationship[] relationships, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            return postDataset(auth, datasetName, defaultMode, tables, relationships);
+            return postDataset(auth, datasetName, defaultMode, tables, relationships, exec);
         }
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", datasetName);
         body.put("defaultMode", defaultMode);
         body.put("tables", tables);
-        if(relationships != null && relationships.length > 0) {
+        if (relationships != null && relationships.length > 0) {
             body.put("relationships", relationships);
         }
         final String uri = UriBuilder.fromPath(POST_DATASET_IN_GROUP_URI).build(groupId).toString();
-        return post(uri, Dataset.class, GSON.toJson(body), auth);
+        return post(uri, Dataset.class, GSON.toJson(body), auth, exec);
     }
 
     /**
@@ -243,12 +264,15 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
      * @param rows the rows to add
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static void postRows(final AuthTokenProvider auth, final String datasetId, final String tableName,
-        final String rows) throws PowerBIResponseException {
+        final String rows, final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         final String uri = UriBuilder.fromPath(POST_ROWS_URI).build(datasetId, tableName).toString();
-        post(uri, Void.class, rows, auth);
+        post(uri, Void.class, rows, auth, exec);
     }
 
     /**
@@ -260,16 +284,20 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
      * @param rows the rows to add
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static void postRows(final AuthTokenProvider auth, final String groupId, final String datasetId,
-        final String tableName, final String rows) throws PowerBIResponseException {
+        final String tableName, final String rows, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            postRows(auth, datasetId, tableName, rows);
+            postRows(auth, datasetId, tableName, rows, exec);
             return;
         }
         final String uri = UriBuilder.fromPath(POST_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
-        post(uri, Void.class, rows, auth);
+        post(uri, Void.class, rows, auth, exec);
     }
 
     /**
@@ -277,12 +305,15 @@ public final class PowerBIRestAPIUtils {
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param datasetId the identifier of the dataset
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static void deleteDataset(final AuthTokenProvider auth, final String datasetId)
-        throws PowerBIResponseException {
+    public static void deleteDataset(final AuthTokenProvider auth, final String datasetId, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final String uri = UriBuilder.fromPath(DELETE_DATASET_URI).build(datasetId).toString();
-        delete(uri, Void.class, auth);
+        delete(uri, Void.class, auth, exec);
     }
 
     /**
@@ -291,16 +322,19 @@ public final class PowerBIRestAPIUtils {
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
      * @param datasetId the identifier of the dataset
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static void deleteDataset(final AuthTokenProvider auth, final String groupId, final String datasetId)
-        throws PowerBIResponseException {
+    public static void deleteDataset(final AuthTokenProvider auth, final String groupId, final String datasetId,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            deleteDataset(auth, datasetId);
+            deleteDataset(auth, datasetId, exec);
             return;
         }
         final String uri = UriBuilder.fromPath(DELETE_DATASET_IN_GROUP_URI).build(groupId, datasetId).toString();
-        delete(uri, Void.class, auth);
+        delete(uri, Void.class, auth, exec);
     }
 
     /**
@@ -308,13 +342,16 @@ public final class PowerBIRestAPIUtils {
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param datasetId the identifier of the dataset
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the tables
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static Tables getTables(final AuthTokenProvider auth, final String datasetId)
-        throws PowerBIResponseException {
+    public static Tables getTables(final AuthTokenProvider auth, final String datasetId, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final String uri = UriBuilder.fromPath(GET_TABLES_URI).build(datasetId).toString();
-        return get(uri, Tables.class, auth);
+        return get(uri, Tables.class, auth, exec);
     }
 
     /**
@@ -323,16 +360,19 @@ public final class PowerBIRestAPIUtils {
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
      * @param datasetId the identifier of the dataset
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the tables
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static Tables getTables(final AuthTokenProvider auth, final String groupId, final String datasetId)
-        throws PowerBIResponseException {
+    public static Tables getTables(final AuthTokenProvider auth, final String groupId, final String datasetId,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            return getTables(auth, datasetId);
+            return getTables(auth, datasetId, exec);
         }
         final String uri = UriBuilder.fromPath(GET_TABLES_IN_GROUP_URI).build(groupId, datasetId).toString();
-        return get(uri, Tables.class, auth);
+        return get(uri, Tables.class, auth, exec);
     }
 
     /**
@@ -342,15 +382,19 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
      * @param columns the columns of the table
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static void putTable(final AuthTokenProvider auth, final String datasetId, final String tableName,
-        final Column[] columns) throws PowerBIResponseException {
+        final Column[] columns, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", tableName);
         body.put("columns", columns);
         final String uri = UriBuilder.fromPath(PUT_TABLE_URI).build(datasetId, tableName).toString();
-        put(uri, Void.class, GSON.toJson(body), auth);
+        put(uri, Void.class, GSON.toJson(body), auth, exec);
     }
 
     /**
@@ -361,30 +405,38 @@ public final class PowerBIRestAPIUtils {
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
      * @param columns the columns of the table
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static void putTable(final AuthTokenProvider auth, final String groupId, final String datasetId,
-        final String tableName, final Column[] columns) throws PowerBIResponseException {
+        final String tableName, final Column[] columns, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            putTable(auth, datasetId, tableName, columns);
+            putTable(auth, datasetId, tableName, columns, exec);
             return;
         }
         final Map<String, Object> body = new HashMap<>(2);
         body.put("name", tableName);
         body.put("columns", columns);
         final String uri = UriBuilder.fromPath(PUT_TABLE_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
-        put(uri, Void.class, GSON.toJson(body), auth);
+        put(uri, Void.class, GSON.toJson(body), auth, exec);
     }
 
     /**
      * Calls "Groups - Get Groups" from the Power BI REST API.
      *
      * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @return the groups the user has access to
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static Groups getGroups(final AuthTokenProvider auth) throws PowerBIResponseException {
-        return get(GET_GROUPS_URI, Groups.class, auth);
+    public static Groups getGroups(final AuthTokenProvider auth, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
+        return get(GET_GROUPS_URI, Groups.class, auth, exec);
     }
 
     /**
@@ -393,12 +445,15 @@ public final class PowerBIRestAPIUtils {
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
-    public static void deleteRows(final AuthTokenProvider auth, final String datasetId, final String tableName)
-        throws PowerBIResponseException {
+    public static void deleteRows(final AuthTokenProvider auth, final String datasetId, final String tableName,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         final String uri = UriBuilder.fromPath(DELETE_ROWS_URI).build(datasetId, tableName).toString();
-        delete(uri, Void.class, auth);
+        delete(uri, Void.class, auth, exec);
     }
 
     /**
@@ -408,61 +463,67 @@ public final class PowerBIRestAPIUtils {
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
      * @param datasetId the identifier of the dataset
      * @param tableName the name of the table
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
      * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static void deleteRows(final AuthTokenProvider auth, final String groupId, final String datasetId,
-        final String tableName) throws PowerBIResponseException {
+        final String tableName, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            deleteRows(auth, datasetId, tableName);
+            deleteRows(auth, datasetId, tableName, exec);
             return;
         }
         final String uri =
             UriBuilder.fromPath(DELETE_ROWS_IN_GROUP_URI).build(groupId, datasetId, tableName).toString();
-        delete(uri, Void.class, auth);
+        delete(uri, Void.class, auth, exec);
     }
 
     /** Make a GET request */
-    private static <T> T get(final String uri, final Class<T> responseType, final AuthTokenProvider auth)
-        throws PowerBIResponseException {
+    private static <T> T get(final String uri, final Class<T> responseType, final AuthTokenProvider auth,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
-            final Response response = client.get()) {
+                final var response = RetryUtil.withRetry(client::get, exec)) {
             return checkResponse(response, responseType);
         }
     }
 
     /** Make a POST request */
     private static <T> T post(final String uri, final Class<T> responseType, final String body,
-        final AuthTokenProvider auth) throws PowerBIResponseException {
+        final AuthTokenProvider auth, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
         try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
-            final Response response = client.post(body)) {
+                final Response response = RetryUtil.withRetry(() -> client.post(body), exec)) {
             return checkResponse(response, responseType);
         }
     }
 
     /** Make a DELETE request */
-    private static <T> T delete(final String uri, final Class<T> responseType, final AuthTokenProvider auth)
-        throws PowerBIResponseException {
+    private static <T> T delete(final String uri, final Class<T> responseType, final AuthTokenProvider auth,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
-            final Response response = client.delete()) {
+                final Response response = RetryUtil.withRetry(client::delete, exec)) {
             return checkResponse(response, responseType);
         }
     }
 
     /** Make a PUT request */
     private static <T> T put(final String uri, final Class<T> responseType, final String body,
-        final AuthTokenProvider auth) throws PowerBIResponseException {
+        final AuthTokenProvider auth, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
         final WebClient client = getClient(uri, auth);
         client.accept(MediaType.APPLICATION_JSON);
         client.type(MediaType.APPLICATION_JSON);
         try (final AuthenticationCloseable c = ThreadLocalHTTPAuthenticator.suppressAuthenticationPopups();
-            final Response response = client.put(body)) {
+                final Response response = RetryUtil.withRetry(() -> client.put(body), exec)) {
             return checkResponse(response, responseType);
         }
     }
@@ -480,7 +541,7 @@ public final class PowerBIRestAPIUtils {
                 final ErrorResponse error = GSON.fromJson(response.readEntity(String.class), ErrorResponse.class);
                 message = error == null ? "Unknown reason." : error.toString();
             } catch (final JsonSyntaxException | ProcessingException e) {
-                message = "Error occured during communicating with Power BI: " + statusInfo.getReasonPhrase()
+                message = "Error occurred during communicating with Power BI: " + statusInfo.getReasonPhrase()
                     + " (Error Code: " + statusInfo.getStatusCode() + ")";
             }
             throw new PowerBIResponseException(message);

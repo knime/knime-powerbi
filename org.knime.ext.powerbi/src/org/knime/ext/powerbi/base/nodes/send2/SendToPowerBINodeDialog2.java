@@ -91,6 +91,7 @@ import javax.swing.border.TitledBorder;
 import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DataValue;
+import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeLogger;
@@ -707,8 +708,8 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
     /** Call the REST API to get the available workspaces */
     private static List<PowerBIElement> getAvailableWorkspaces(final AuthTokenProvider auth)
-        throws PowerBIResponseException {
-        final Groups groups = PowerBIRestAPIUtils.getGroups(auth);
+        throws PowerBIResponseException, CanceledExecutionException {
+        final Groups groups = PowerBIRestAPIUtils.getGroups(auth, null);
         final List<PowerBIElement> workspaces = Arrays.stream(groups.getValue()) //
             .map(g -> createPowerBIWorkspace(g.getName(), g.getId(), false)) //
             .collect(Collectors.toCollection(ArrayList::new));
@@ -718,12 +719,12 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
 
     /** Call the REST API to get the available datasets */
     private List<PowerBIElement> getAvailableDatasets(final AuthTokenProvider auth, final String workspaceId)
-        throws PowerBIResponseException {
+        throws PowerBIResponseException, CanceledExecutionException {
         final Datasets datasets;
         if (workspaceId.isEmpty()) {
-            datasets = PowerBIRestAPIUtils.getDatasets(auth);
+            datasets = PowerBIRestAPIUtils.getDatasets(auth, null);
         } else {
-            datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId);
+            datasets = PowerBIRestAPIUtils.getDatasets(auth, workspaceId, null);
         }
 
         List<PowerBIElement> powerBIDatasets = Arrays.stream(datasets.getValue()).filter(Dataset::isAddRowsAPIEnabled)//
@@ -750,16 +751,16 @@ final class SendToPowerBINodeDialog2 extends NodeDialogPane {
     }
 
     private static List<PowerBIElement> getAvailableTables(final AuthTokenProvider auth, final String workspaceId,
-        final String datasetId) throws PowerBIResponseException {
+        final String datasetId) throws PowerBIResponseException, CanceledExecutionException {
         final Tables tables;
 
         if (datasetId.equals(NO_PUSH_DATASETS_PLACEHOLDER.getIdentifier())) {
             return Collections.singletonList(NO_TABLES_PLACEHOLDER);
         }
         if (workspaceId.isEmpty()) {
-            tables = PowerBIRestAPIUtils.getTables(auth, datasetId);
+            tables = PowerBIRestAPIUtils.getTables(auth, datasetId, null);
         } else {
-            tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId);
+            tables = PowerBIRestAPIUtils.getTables(auth, workspaceId, datasetId, null);
         }
 
         return Arrays.stream(tables.getValue()) //
