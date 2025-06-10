@@ -1,0 +1,113 @@
+{
+  "data" : {
+    "model" : {
+      "daxQuery" : "EVALUATE\n    'table';",
+      "queryErrorHandling" : "FAIL"
+    }
+  },
+  "schema" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "dataset" : {
+            "type" : "string",
+            "title" : "Semantic model",
+            "description" : "The Semantic model to read."
+          },
+          "daxQuery" : {
+            "type" : "string",
+            "title" : "DAX query",
+            "description" : "The <a href=\"https://learn.microsoft.com/en-us/dax/dax-queries\">DAX query</a> to evaluate.\nSee node description for limitations regarding output size.\n",
+            "default" : "EVALUATE\n    'table';"
+          },
+          "queryErrorHandling" : {
+            "oneOf" : [ {
+              "const" : "FAIL",
+              "title" : "Fail"
+            }, {
+              "const" : "WARN",
+              "title" : "Warn"
+            }, {
+              "const" : "IGNORE",
+              "title" : "Ignore"
+            } ],
+            "title" : "If returned data was limited because of result size",
+            "description" : "Power BI limits the result size of DAX queries (see\n<a href=\"learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#limitations\">here</a>).\nThis setting determines how to handle a truncated query result due these limits or other errors.\n\n<ul>\n<li><b>Fail</b>: Fail node execution</li>\n<li><b>Warn</b>: Set a node warning</li>\n<li><b>Ignore</b>: Do nothing</li>\n</ul>",
+            "default" : "FAIL"
+          },
+          "workspaceId" : {
+            "type" : "string",
+            "title" : "Workspace",
+            "description" : "The workspace which contains the Semantic Models.\nThe first option, “My Workspace”, always refers to the private user workspace."
+          }
+        }
+      }
+    }
+  },
+  "ui_schema" : {
+    "elements" : [ {
+      "label" : "Semantic Model",
+      "type" : "Section",
+      "elements" : [ {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/workspaceId",
+        "options" : {
+          "format" : "dropDown"
+        },
+        "providedOptions" : [ "possibleValues" ]
+      }, {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/dataset",
+        "options" : {
+          "format" : "dropDown"
+        },
+        "providedOptions" : [ "possibleValues" ]
+      } ]
+    }, {
+      "label" : "Query",
+      "type" : "Section",
+      "elements" : [ {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/daxQuery",
+        "options" : {
+          "rows" : 4,
+          "format" : "textArea"
+        }
+      }, {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/queryErrorHandling",
+        "options" : {
+          "format" : "valueSwitch"
+        }
+      } ]
+    } ]
+  },
+  "persist" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "workspaceId" : { },
+          "dataset" : { },
+          "daxQuery" : { },
+          "queryErrorHandling" : { }
+        }
+      }
+    }
+  },
+  "globalUpdates" : [ {
+    "trigger" : {
+      "id" : "after-open-dialog"
+    },
+    "triggerInitially" : true,
+    "dependencies" : [ "#/properties/model/properties/workspaceId" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/workspaceId"
+    },
+    "dependencies" : [ "#/properties/model/properties/workspaceId" ]
+  } ]
+}

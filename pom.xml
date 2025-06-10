@@ -24,6 +24,7 @@
 	<modules>
 		<module>org.knime.ext.azuread</module>
 		<module>org.knime.ext.powerbi</module>
+		<module>org.knime.ext.powerbi.tests</module>
 		<module>org.knime.features.ext.powerbi</module>
 		<module>org.knime.update.powerbi</module>
 	</modules>
