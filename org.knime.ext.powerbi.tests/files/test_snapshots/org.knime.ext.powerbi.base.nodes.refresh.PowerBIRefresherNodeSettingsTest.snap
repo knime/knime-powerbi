@@ -1,0 +1,220 @@
+{
+  "data" : {
+    "model" : {
+      "type" : "CALCULATE",
+      "tables" : [ ],
+      "timeout" : 180
+    }
+  },
+  "schema" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "dataset" : {
+            "type" : "string",
+            "title" : "Semantic model",
+            "description" : "The Semantic model to read."
+          },
+          "message" : {
+            "type" : "object"
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "partition" : {
+                  "type" : "string",
+                  "title" : "Partition",
+                  "description" : "Name of the table to refresh.",
+                  "default" : ""
+                },
+                "table" : {
+                  "type" : "string",
+                  "title" : "Table",
+                  "description" : "Name of the table to refresh.",
+                  "default" : ""
+                }
+              }
+            },
+            "title" : "Tables",
+            "description" : "The tables to refresh. If no elements are provided, all tables will be refreshed.",
+            "default" : [ ]
+          },
+          "timeout" : {
+            "type" : "integer",
+            "format" : "int64",
+            "title" : "Refresh timeout (minutes)",
+            "description" : "How long to wait for the refresh operation to complete in minutes.\nThe refresh in Power BI will be cancelled if it takes longer.\n",
+            "default" : 180
+          },
+          "type" : {
+            "oneOf" : [ {
+              "const" : "AUTOMATIC",
+              "title" : "Automatic"
+            }, {
+              "const" : "CALCULATE",
+              "title" : "Calculate"
+            }, {
+              "const" : "DATA_ONLY",
+              "title" : "Data Only"
+            }, {
+              "const" : "DEFRAGMENT",
+              "title" : "Defragment"
+            }, {
+              "const" : "FULL",
+              "title" : "Full"
+            }, {
+              "const" : "CLEAR_VALUES",
+              "title" : "Clear Values"
+            } ],
+            "title" : "Type",
+            "description" : "The type of refresh to perform. The refresh types are documented\n<a href=\"https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-execution-details#datasetrefreshdetailtype\">here</a>\n<ul>\n<li><b>Automatic</b>: Refresh the data and recalculate dependencies only if needed.</li>\n<li><b>Calculate</b>: Recalculates the data only if needed.</li>\n<li><b>Data Only</b>: Refresh the data and clear dependencies.</li>\n<li><b>Defragment</b>: Defragment the data by removing data that has been removed from the columns.</li>\n<li><b>Full</b>: Refresh the data and recalculate the dependencies every time.</li>\n<li><b>Clear Values</b>: Clears all values in the table(s) and their dependencies!</li>\n</ul>",
+            "default" : "CALCULATE"
+          },
+          "workspaceId" : {
+            "type" : "string",
+            "title" : "Workspace",
+            "description" : "The workspace which contains the Semantic Models.\nThe first option, “My Workspace”, always refers to the private user workspace."
+          }
+        }
+      }
+    }
+  },
+  "ui_schema" : {
+    "elements" : [ {
+      "label" : "Semantic Model",
+      "type" : "Section",
+      "elements" : [ {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/workspaceId",
+        "options" : {
+          "format" : "dropDown"
+        },
+        "providedOptions" : [ "possibleValues" ]
+      }, {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/dataset",
+        "options" : {
+          "format" : "dropDown"
+        },
+        "providedOptions" : [ "possibleValues" ]
+      } ]
+    }, {
+      "label" : "Refresh",
+      "type" : "Section",
+      "options" : {
+        "isAdvanced" : true
+      },
+      "elements" : [ {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/type"
+      }, {
+        "type" : "Control",
+        "id" : "#/properties/model/properties/message",
+        "options" : {
+          "format" : "textMessage"
+        },
+        "providedOptions" : [ "message" ]
+      }, {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/tables",
+        "options" : {
+          "detail" : [ {
+            "type" : "Control",
+            "scope" : "#/properties/table"
+          }, {
+            "type" : "Control",
+            "scope" : "#/properties/partition"
+          } ],
+          "addButtonText" : "Add Table",
+          "arrayElementTitle" : "Table"
+        }
+      } ]
+    }, {
+      "label" : "Timeouts",
+      "type" : "Section",
+      "options" : {
+        "isAdvanced" : true
+      },
+      "elements" : [ {
+        "type" : "Control",
+        "scope" : "#/properties/model/properties/timeout",
+        "options" : {
+          "validation" : {
+            "min" : {
+              "parameters" : {
+                "min" : 0.0,
+                "isExclusive" : false
+              },
+              "errorMessage" : "The value must be at least 0."
+            },
+            "max" : {
+              "parameters" : {
+                "max" : 1440.0,
+                "isExclusive" : false
+              },
+              "errorMessage" : "The value must not exceed 1440."
+            }
+          }
+        }
+      } ]
+    } ]
+  },
+  "persist" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "workspaceId" : { },
+          "dataset" : { },
+          "type" : { },
+          "message" : { },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "table" : { },
+                "partition" : { }
+              }
+            }
+          },
+          "timeout" : { }
+        }
+      }
+    }
+  },
+  "initialUpdates" : [ {
+    "id" : "#/properties/model/properties/message",
+    "providedOptionName" : "message",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : {
+        "title" : "All tables will be refreshed",
+        "description" : "If no specific tables are specified, all of them will be refreshed.",
+        "type" : "INFO"
+      }
+    } ]
+  } ],
+  "globalUpdates" : [ {
+    "trigger" : {
+      "id" : "after-open-dialog"
+    },
+    "triggerInitially" : true,
+    "dependencies" : [ "#/properties/model/properties/workspaceId" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/tables"
+    },
+    "dependencies" : [ "#/properties/model/properties/tables" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/workspaceId"
+    },
+    "dependencies" : [ "#/properties/model/properties/workspaceId" ]
+  } ]
+}

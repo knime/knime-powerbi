@@ -46,13 +46,12 @@
  * History
  *   Feb 5, 2016 (wiswedel): created
  */
-package org.knime.ext.powerbi.base.nodes.read;
+package org.knime.ext.powerbi.base.nodes.refresh;
 
 import java.io.IOException;
 import java.util.Optional;
 
 import org.apache.xmlbeans.XmlException;
-import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ConfigurableNodeFactory;
 import org.knime.core.node.NodeDescription;
 import org.knime.core.node.NodeDialogPane;
@@ -69,51 +68,40 @@ import org.knime.credentials.base.CredentialPortObject;
 import org.xml.sax.SAXException;
 
 /**
- * Factory for the Power BI Reader node.
+ * Factory for the Power BI Refresher node.
  *
  * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
  */
 @SuppressWarnings("restriction") // New Node UI is not yet API
-public final class PowerBIReaderNodeFactory extends ConfigurableNodeFactory<PowerBIReaderNodeModel>
+public final class PowerBIRefresherNodeFactory
+    extends ConfigurableNodeFactory<PowerBIRefresherNodeModel>
     implements NodeDialogFactory {
 
     private static final String FULL_DESCRIPTION = """
-            <p>Reads data from Power BI using a DAX query.</p>
             <p>
-                Currently the node only supports the basic data types
-                returned by the REST API (Strings, Number (Double), Booleans).
-                The data types can be converted to other data types with nodes like
-                <a href="https://hub.knime.com/n/sLTXYsycpYMwt_yW">String to Date&amp;Time</a>.
+                Refresh a Power BI Semantic Model to ensure that its data
+                is up to date. The refresh is always executed as a transaction.
             </p>
             <p>
-                Power BI limits the amount of data which can be requested in one call.
-                The actual limit depends on the number of values and rows. To access all
-                of the data this node can be used multiple times with the appropriate window
-                functions like
-                <a href="https://learn.microsoft.com/en-us/dax/topnskip-function-dax">TOPNSKIP</a> or
-                <a href="https://learn.microsoft.com/en-us/dax/window-function-dax">WINDOW</a>.
-            </p>
-            <p>
-                To ensure that the data is up to date before executing this node the
-                Refresh Power BI Semantic Model node.
+                The refreshing capabilities may be <a
+                href="https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset#limitations">limited
+                in some cases</a>.
             </p>
             """;
 
     private static final String INPUT_PORT_GROUP = "Credential";
 
-    private static final String OUTPUT_PORT_GROUP = "Output Table";
-
     private static final WebUINodeConfiguration CONFIG = WebUINodeConfiguration.builder()//
-        .name("Power BI Model Reader")//
-        .icon("./power_bi_reader.png") //
-        .shortDescription("Read data from Power BI") //
+        .name("Power BI Model Refresher")//
+        .icon("./power_bi_refresher.png") //
+        .shortDescription("Refresh a Power BI Semantic Model") //
         .fullDescription(FULL_DESCRIPTION) //
-        .modelSettingsClass(PowerBIReaderNodeSettings.class) //
-        .nodeType(NodeType.Source)//
+        .modelSettingsClass(PowerBIRefresherNodeSettings.class) //
+        .nodeType(NodeType.Sink)//
         .addInputPort(INPUT_PORT_GROUP, CredentialPortObject.TYPE,
             "Microsoft/Azure credential (access token)", false)//
-        .addOutputTable(OUTPUT_PORT_GROUP, "Read table") //
-        .keywords("Microsoft", "Power BI", "Semantic Model", "Dataset").sinceVersion(5, 5, 0).build();
+        .keywords("Microsoft", "Power BI", "Semantic Model", "Dataset")
+        .sinceVersion(5, 5, 0).build();
 
     @Override
     protected NodeDescription createNodeDescription() throws SAXException, IOException, XmlException {
@@ -122,11 +110,12 @@ public final class PowerBIReaderNodeFactory extends ConfigurableNodeFactory<Powe
 
     @Override
     public NodeDialog createNodeDialog() {
-        return new DefaultNodeDialog(SettingsType.MODEL, PowerBIReaderNodeSettings.class);
+        return new DefaultNodeDialog(SettingsType.MODEL, PowerBIRefresherNodeSettings.class);
     }
 
     @Override
     protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
+        // we do not want to use the dialog provided by the framework
         return NodeDialogManager.createLegacyFlowVariableNodeDialog(createNodeDialog());
     }
 
@@ -134,14 +123,13 @@ public final class PowerBIReaderNodeFactory extends ConfigurableNodeFactory<Powe
     protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
         final var b = new PortsConfigurationBuilder();
         b.addFixedInputPortGroup(INPUT_PORT_GROUP, CredentialPortObject.TYPE);
-        b.addFixedOutputPortGroup(OUTPUT_PORT_GROUP, BufferedDataTable.TYPE);
         return Optional.of(b);
     }
 
     @Override
-    protected PowerBIReaderNodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
-        return new PowerBIReaderNodeModel(creationConfig.getPortConfig().orElseThrow(),
-            PowerBIReaderNodeSettings.class);
+    protected PowerBIRefresherNodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
+        return new PowerBIRefresherNodeModel(
+            creationConfig.getPortConfig().orElseThrow(), PowerBIRefresherNodeSettings.class);
     }
 
     @Override
@@ -150,8 +138,8 @@ public final class PowerBIReaderNodeFactory extends ConfigurableNodeFactory<Powe
     }
 
     @Override
-    public NodeView<PowerBIReaderNodeModel> createNodeView(final int viewIndex,
-        final PowerBIReaderNodeModel nodeModel) {
+    public NodeView<PowerBIRefresherNodeModel> createNodeView(
+        final int viewIndex, final PowerBIRefresherNodeModel nodeModel) {
         return null; // no views
     }
 

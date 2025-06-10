@@ -25,6 +25,11 @@
       <node
             category-path="/toolintegration/powerbi"
             deprecated="false"
+            factory-class="org.knime.ext.powerbi.base.nodes.refresh.PowerBIRefresherNodeFactory">
+      </node>
+      <node
+            category-path="/toolintegration/powerbi"
+            deprecated="false"
             factory-class="org.knime.ext.powerbi.base.nodes.read.PowerBIReaderNodeFactory">
       </node>
    </extension>
