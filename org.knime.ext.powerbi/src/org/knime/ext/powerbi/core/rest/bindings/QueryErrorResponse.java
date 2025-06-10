@@ -49,69 +49,85 @@
 package org.knime.ext.powerbi.core.rest.bindings;
 
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 import com.google.gson.annotations.SerializedName;
 
 /**
- * An error reported by the Power BI REST API.
+ * A query error reported by the Power BI REST API.
  *
- * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+ * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
  */
 @SuppressWarnings("java:S116") // Names given by JSON Structure
-public final class ErrorResponse {
+public final class QueryErrorResponse {
 
-    private final Error error;
-
-    @SerializedName(value = "message", alternate = {"Message"})
-    private final String message;
-
-    private ErrorResponse(final Error e, final String m) { // NOSONAR used by GSON
-        error = e;
-        this.message = m;
-    }
+    private Error error;
 
     @Override
     public String toString() {
-        return error == null && message != null ? message : getError().toString();
+        return getError().toString();
     }
 
     /**
      * @return the error
      */
-    public Error getError() {
-        return error != null ? error : new Error("Unspecified", "Unspecified", null);
+    public PBIError getError() {
+        return error != null ? error.getPbiError() : new PBIError("Unspecified");
     }
 
     /**
-     * @return the message
-     */
-    public String getMessage() {
-        return message;
-    }
-
-
-    /**
-     * An error message of Power BI.
+     * A query error message of Power BI.
      *
-     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+     * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
      */
     @SuppressWarnings("java:S116") // Names given by JSON Structure
-    public static class Error {
-        private final String code;
+    public static final class Error {
+        private String code;
 
-        private final String message;
+        @SerializedName("pbi.error")
+        private PBIError pbiError;
 
-        private final Detail[] details;
+        @Override
+        public String toString() {
+            return pbiError != null ? pbiError.toString() : "Unspecified";
+        }
 
-        private Error(final String c, final String m, final Detail[] d) {
-            code = c;
-            message = m;
-            details = d;
+        /**
+         * @return the actual nested pbi error thingy
+         */
+        public PBIError getPbiError() {
+            return pbiError;
+        }
+
+        /**
+         * Returns the error code.
+         *
+         * @return the error code
+         */
+        public String getCode() {
+            return code;
+        }
+    }
+
+    /**
+     *
+     * A query error message of Power BI.
+     *
+     * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
+     */
+    @SuppressWarnings("java:S116") // Names given by JSON Structure
+    public static final class PBIError {
+        private String code;
+
+        private Detail[] details;
+
+        private PBIError(final String c) {
+            this.code = c;
         }
 
         @Override
         public String toString() {
-            return "Error: " + getMessage() + ", Code: " + getCode() + //
+            return "Error Code: " + getCode() + //
                 (getDetails() != null ? (", Details: " + Arrays.toString(getDetails())) : "");
         }
 
@@ -125,16 +141,6 @@ public final class ErrorResponse {
         }
 
         /**
-         * Returns the message
-         *
-         * @return the message
-         */
-        public String getMessage() {
-            // Replace html tags
-            return message != null ? message.replaceAll("\\<.*?\\>", "") : "";
-        }
-
-        /**
          * Returns the details.
          *
          * @return the details
@@ -145,42 +151,63 @@ public final class ErrorResponse {
     }
 
     /**
-     * Details of an error message of Power BI.
+     * Details of a query error message of Power BI.
      *
-     * @author Benjamin Wilhelm, KNIME GmbH, Konstanz, Germany
+     * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
      */
     @SuppressWarnings("java:S116") // Names given by JSON Structure
-    public static class Detail {
-        private final String message;
+    public static final class Detail {
+        private String code;
 
-        private final String target;
-
-        private Detail(final String m, final String t) {
-            message = m;
-            target = t;
-        }
+        private DetailData detail; // NOSONAR given by JSON Structure
 
         @Override
         public String toString() {
-            return getMessage() + " (Target: " + getTarget() + ")";
+            return detail.toString() + " (" + code + ")";
         }
 
         /**
-         * Returns the message.
-         *
-         * @return the message
+         * @return the inner detail data
          */
-        public String getMessage() {
-            return message;
+        public DetailData getDetailData() {
+            return detail;
+        }
+
+    }
+    /**
+     * Details of a detail of a query error message of Power BI.
+     *
+     * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
+     */
+    @SuppressWarnings("java:S116") // Names given by JSON Structure
+    public static final class DetailData {
+        private static final Pattern TAG_PATTERN = Pattern.compile("<[^>]*>");
+
+        private int type;
+
+        private String value;
+
+        @Override
+        public String toString() {
+            return getValue();
         }
 
         /**
-         * Returns the target.
+         * Returns the type.
          *
-         * @return the target
+         * @return the type
          */
-        public String getTarget() {
-            return target;
+        public int getType() {
+            return type;
+        }
+
+        /**
+         * Returns the value.
+         *
+         * @return the value
+         */
+        public String getValue() {
+            return TAG_PATTERN.matcher(value).replaceAll("");
         }
     }
 }

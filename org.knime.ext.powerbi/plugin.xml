@@ -22,5 +22,10 @@
             deprecated="false"
             factory-class="org.knime.ext.powerbi.base.nodes.send2.SendToPowerBINodeFactory2">
       </node>
+      <node
+            category-path="/toolintegration/powerbi"
+            deprecated="false"
+            factory-class="org.knime.ext.powerbi.base.nodes.read.PowerBIReaderNodeFactory">
+      </node>
    </extension>
 </plugin>

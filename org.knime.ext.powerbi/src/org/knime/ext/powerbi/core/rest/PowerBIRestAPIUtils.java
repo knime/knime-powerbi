@@ -50,8 +50,10 @@ package org.knime.ext.powerbi.core.rest;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.transport.http.HTTPConduit;
 import org.knime.core.node.CanceledExecutionException;
@@ -63,6 +65,9 @@ import org.knime.ext.powerbi.core.rest.bindings.Dataset;
 import org.knime.ext.powerbi.core.rest.bindings.Datasets;
 import org.knime.ext.powerbi.core.rest.bindings.ErrorResponse;
 import org.knime.ext.powerbi.core.rest.bindings.Groups;
+import org.knime.ext.powerbi.core.rest.bindings.QueryErrorResponse;
+import org.knime.ext.powerbi.core.rest.bindings.QueryResults;
+import org.knime.ext.powerbi.core.rest.bindings.QueryResults.Result;
 import org.knime.ext.powerbi.core.rest.bindings.Relationship;
 import org.knime.ext.powerbi.core.rest.bindings.Table;
 import org.knime.ext.powerbi.core.rest.bindings.Tables;
@@ -127,6 +132,12 @@ public final class PowerBIRestAPIUtils {
 
     private static final String DELETE_ROWS_IN_GROUP_URI =
         "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}/rows";
+
+    private static final String EXECUTE_QUERY_URI =
+        "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/executeQueries";
+
+    private static final String EXECUTE_QUERY_IN_GROUP_URI =
+        "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/executeQueries";
 
     private static final Gson GSON = new Gson();
 
@@ -480,6 +491,56 @@ public final class PowerBIRestAPIUtils {
         delete(uri, Void.class, auth, exec);
     }
 
+    /**
+     * Calls "Datasets - Execute Queries" from the Power BI REST API. Execute a DAX Query which results in a table.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param datasetId the identifier of the dataset
+     * @param query the query to execute
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
+     * @return the query result which may contain table and columns
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
+     */
+    public static Result executeDAXQuery(final AuthTokenProvider auth, final String datasetId, final String query,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
+        final String uri = UriBuilder.fromPath(EXECUTE_QUERY_URI).build(datasetId).toString();
+        return executeDAXQuery(uri, auth, query, exec);
+    }
+
+    /**
+     * Calls "Datasets - Execute Queries" from the Power BI REST API. Execute a DAX Query which results in a table.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @param query the query to execute
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
+     * @return the query result which may contain table and columns
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
+     */
+    public static Result executeDAXQuery(final AuthTokenProvider auth, final String groupId, final String datasetId,
+        final String query, final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
+        if (groupId == null) {
+            return executeDAXQuery(auth, datasetId, query, exec);
+        }
+        final String uri = UriBuilder.fromPath(EXECUTE_QUERY_IN_GROUP_URI).build(groupId, datasetId).toString();
+        return executeDAXQuery(uri, auth, query, exec);
+    }
+
+    private static Result executeDAXQuery(final String uri, final AuthTokenProvider auth, final String query,
+        final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
+        final var body = Map.of("queries", List.of(Map.of("query", query)));
+        final var post = post(uri, QueryResults.class, GSON.toJson(body), auth, exec);
+        if (post == null || post.results() == null || post.results().length == 0) {
+            return null;
+        }
+        return post.results()[0];
+    }
+
     /** Make a GET request */
     private static <T> T get(final String uri, final Class<T> responseType, final AuthTokenProvider auth,
         final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
@@ -538,8 +599,14 @@ public final class PowerBIRestAPIUtils {
         if (statusInfo.getFamily() != Family.SUCCESSFUL) {
             String message;
             try {
-                final ErrorResponse error = GSON.fromJson(response.readEntity(String.class), ErrorResponse.class);
-                message = error == null ? "Unknown reason." : error.toString();
+                final var str = response.readEntity(String.class);
+                if (StringUtils.contains(str, "pbi.error")) {
+                    final var queryError = GSON.fromJson(str, QueryErrorResponse.class);
+                    message = queryError.toString();
+                } else {
+                    final var error = GSON.fromJson(str, ErrorResponse.class);
+                    message = error == null ? "Unknown reason." : error.toString();
+                }
             } catch (final JsonSyntaxException | ProcessingException e) {
                 message = "Error occurred during communicating with Power BI: " + statusInfo.getReasonPhrase()
                     + " (Error Code: " + statusInfo.getStatusCode() + ")";
