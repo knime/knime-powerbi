@@ -102,7 +102,7 @@ final class PowerBIReaderNodeModel extends WebUINodeModel<PowerBIReaderNodeSetti
     protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs,
         final PowerBIReaderNodeSettings modelSettings)
         throws InvalidSettingsException {
-        modelSettings.validate(inSpecs[1]);
+        modelSettings.validate(inSpecs[0]);
         // we do not know the result of the query without executing it; oh well...
         return new PortObjectSpec[1];
     }
