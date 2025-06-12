@@ -57,6 +57,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeLogger;
 import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
@@ -76,6 +77,8 @@ import org.knime.ext.powerbi.util.PowerBICredentialUtil;
  */
 @SuppressWarnings("restriction") // New Node UI is not yet API
 final class PowerBIRefresherNodeModel extends WebUINodeModel<PowerBIRefresherNodeSettings> {
+
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(PowerBIRefresherNodeModel.class);
 
     static final long MAX_TIMEOUT_MINUTES = 24L * 60L;
 
@@ -106,7 +109,7 @@ final class PowerBIRefresherNodeModel extends WebUINodeModel<PowerBIRefresherNod
             PowerBIRestAPIUtils.refreshDataset(auth, workspace, settings.m_dataset, refresh, exec);
 
         exec.setMessage("Waiting for refresh to finish");
-        waitRefreshed(auth, exec, settings, refreshId);
+        waitRefreshed(auth, exec, settings, workspace, refreshId);
 
         return new PortObject[0];
     }
@@ -126,11 +129,11 @@ final class PowerBIRefresherNodeModel extends WebUINodeModel<PowerBIRefresherNod
 
         final var objects = new LinkedList<ObjectRefreshDefinition>();
 
-        // remove every object if fields both empty
+        // remove every object if both fields are empty
         for (final var tab : settings.m_tables) {
             final var table = emptyToNull(tab.m_table);
             final var partition = emptyToNull(tab.m_partition);
-            if (table != null && partition != null) {
+            if (table != null || partition != null) {
                 objects.add(new ObjectRefreshDefinition(table, partition));
             }
         }
@@ -146,31 +149,41 @@ final class PowerBIRefresherNodeModel extends WebUINodeModel<PowerBIRefresherNod
         return input;
     }
 
-    private static void waitRefreshed(final AuthTokenProvider auth, final ExecutionContext exec,
-        final PowerBIRefresherNodeSettings settings, final String refreshId)
+    private void waitRefreshed(final AuthTokenProvider auth, final ExecutionContext exec,
+        final PowerBIRefresherNodeSettings settings, final String workspaceId, final String refreshId)
         throws IOException, PowerBIResponseException, CanceledExecutionException {
 
         var end = System.currentTimeMillis() + settings.m_timeout * 60000;
 
         try {
-            Thread.sleep(1000);
-            var refresh = PowerBIRestAPIUtils.getDatasetRefreshStatus(auth, settings.m_dataset, refreshId, exec);
-            if (isRefreshFinished(refresh)) {
-                return;
-            }
-
-            while (System.currentTimeMillis() < end) {
+            // for the first 10 seconds check more frequently
+            for (var i = 0; i < 10 && System.currentTimeMillis() < end; ++i) {
                 exec.checkCanceled();
-                Thread.sleep(5000);
-                refresh = PowerBIRestAPIUtils.getDatasetRefreshStatus(auth, settings.m_dataset, refreshId, exec);
+                Thread.sleep(1000);
+                var refresh = PowerBIRestAPIUtils
+                        .getDatasetRefreshStatus(auth, workspaceId, settings.m_dataset, refreshId, exec);
                 if (isRefreshFinished(refresh)) {
+                    handleMessages(refresh).ifPresent(this::setWarningMessage);
                     return;
                 }
             }
 
-        } catch (InterruptedException ex) {
+            // then every 5 seconds
+            while (System.currentTimeMillis() < end) {
+                exec.checkCanceled();
+                Thread.sleep(5000);
+                var refresh = PowerBIRestAPIUtils
+                        .getDatasetRefreshStatus(auth, workspaceId, settings.m_dataset, refreshId, exec);
+                if (isRefreshFinished(refresh)) {
+                    handleMessages(refresh).ifPresent(this::setWarningMessage);
+                    return;
+                }
+            }
+
+        } catch (CanceledExecutionException | InterruptedException ex) { // NOSONAR content not interesting
             Thread.currentThread().interrupt();
-            throw new CanceledExecutionException();
+            cancelRefresh(auth, exec, settings, workspaceId, refreshId);
+            throw new CanceledExecutionException(ex.getMessage());
         }
         throw new IOException("Timeout while waiting for refresh to finish");
     }
@@ -179,8 +192,30 @@ final class PowerBIRefresherNodeModel extends WebUINodeModel<PowerBIRefresherNod
         return switch (refresh.getExtendedStatus()) {
             case Completed -> true;
             case InProgress, NotStarted, Unknown -> false;
-            default -> throw new IOException("Refresh " + refresh.getExtendedStatus());
+            default -> throw new IOException("Refresh " + refresh.getExtendedStatus()
+                    + handleMessages(refresh).map(s -> " (" + s + ")").orElse(""));
         };
+    }
+
+    private static Optional<String> handleMessages(final Refresh refresh) {
+        final var messages = refresh.getMessages();
+        if (messages == null || messages.isEmpty()) {
+            return Optional.empty();
+        }
+        if (messages.size() == 1) {
+            return Optional.of(messages.get(0).toString());
+        }
+        return Optional.of(messages.toString());
+    }
+
+    private static void cancelRefresh(final AuthTokenProvider auth, final ExecutionContext exec,
+        final PowerBIRefresherNodeSettings settings, final String workspaceId, final String refreshId) {
+        try {
+            PowerBIRestAPIUtils.cancelDatasetRefresh(auth, workspaceId, settings.m_dataset, refreshId, exec);
+        } catch (PowerBIResponseException | CanceledExecutionException e) {
+            // nothing to do but log
+            LOGGER.error("Could not cancel refresh: " + e.getMessage(), e);
+        }
     }
 
 }

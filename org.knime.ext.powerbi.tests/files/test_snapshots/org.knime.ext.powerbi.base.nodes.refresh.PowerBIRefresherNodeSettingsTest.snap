@@ -15,7 +15,7 @@
           "dataset" : {
             "type" : "string",
             "title" : "Semantic model",
-            "description" : "The Semantic model to read."
+            "description" : "The Semantic model (also known as dataset) to read. (The model is referenced by its ID.)"
           },
           "message" : {
             "type" : "object"
@@ -77,7 +77,7 @@
           "workspaceId" : {
             "type" : "string",
             "title" : "Workspace",
-            "description" : "The workspace which contains the Semantic Models.\nThe first option, “My Workspace”, always refers to the private user workspace."
+            "description" : "The workspace which contains the Semantic Models.\nThe first option, “My Workspace”, always refers to the private user workspace.\n(The workspace is referenced by its ID.)"
           }
         }
       }

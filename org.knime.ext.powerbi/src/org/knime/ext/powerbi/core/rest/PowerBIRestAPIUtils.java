@@ -141,16 +141,16 @@ public final class PowerBIRestAPIUtils {
     private static final String EXECUTE_QUERY_IN_GROUP_URI =
         "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/executeQueries";
 
-    private static final String DATASET_REFRESH_URI =
+    private static final String CREATE_DATASET_REFRESH_URI =
         "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/refreshes";
 
-    private static final String DATASET_REFRESH_IN_GROUP_URI =
+    private static final String CREATE_DATASET_REFRESH_IN_GROUP_URI =
         "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/refreshes";
 
-    private static final String DATASET_REFRESH_DETAILS_URI =
+    private static final String DATASET_REFRESH_URI =
         "https://api.powerbi.com/v1.0/myorg/datasets/{datasetId}/refreshes/{refreshId}";
 
-    private static final String DATASET_REFRESH_DETAILS_IN_GROUP_URI =
+    private static final String DATASET_REFRESH_IN_GROUP_URI =
         "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/refreshes/{refreshId}";
 
     private static final Gson GSON = new Gson();
@@ -571,7 +571,7 @@ public final class PowerBIRestAPIUtils {
      */
     public static String refreshDataset(final AuthTokenProvider auth, final String datasetId, final Refresh settings,
         final ExecutionContext exec) throws PowerBIResponseException, CanceledExecutionException {
-        final String uri = UriBuilder.fromPath(DATASET_REFRESH_URI).build(datasetId).toString();
+        final String uri = UriBuilder.fromPath(CREATE_DATASET_REFRESH_URI).build(datasetId).toString();
         return refreshDataset(uri, auth, settings, exec);
     }
 
@@ -594,7 +594,7 @@ public final class PowerBIRestAPIUtils {
         if (groupId == null) {
             return refreshDataset(auth, datasetId, settings, exec);
         }
-        final String uri = UriBuilder.fromPath(DATASET_REFRESH_IN_GROUP_URI).build(groupId, datasetId).toString();
+        final var uri = UriBuilder.fromPath(CREATE_DATASET_REFRESH_IN_GROUP_URI).build(groupId, datasetId).toString();
         return refreshDataset(uri, auth, settings, exec);
     }
 
@@ -626,7 +626,7 @@ public final class PowerBIRestAPIUtils {
     public static Refresh getDatasetRefreshStatus(final AuthTokenProvider auth, final String datasetId,
         final String refreshId, final ExecutionContext exec)
         throws PowerBIResponseException, CanceledExecutionException {
-        final String uri = UriBuilder.fromPath(DATASET_REFRESH_DETAILS_URI).build(datasetId, refreshId).toString();
+        final String uri = UriBuilder.fromPath(DATASET_REFRESH_URI).build(datasetId, refreshId).toString();
         return get(uri, Refresh.class, auth, exec);
     }
 
@@ -637,7 +637,7 @@ public final class PowerBIRestAPIUtils {
      * @param auth the authentication to use (the access token is refreshed if necessary)
      * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
      * @param datasetId the identifier of the dataset
-     * @param settings the settings of the refresh
+     * @param refreshId the identifier of the refresh
      * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
      *            be restored. Can be {@code null} in which case no message will be set.
      * @return the refresh
@@ -645,14 +645,55 @@ public final class PowerBIRestAPIUtils {
      * @throws CanceledExecutionException if the request or any of its retries was canceled
      */
     public static Refresh getDatasetRefreshStatus(final AuthTokenProvider auth, final String groupId,
-        final String datasetId, final String settings, final ExecutionContext exec)
+        final String datasetId, final String refreshId, final ExecutionContext exec)
         throws PowerBIResponseException, CanceledExecutionException {
         if (groupId == null) {
-            return getDatasetRefreshStatus(auth, datasetId, settings, exec);
+            return getDatasetRefreshStatus(auth, datasetId, refreshId, exec);
         }
         final String uri =
-            UriBuilder.fromPath(DATASET_REFRESH_DETAILS_IN_GROUP_URI).build(groupId, datasetId).toString();
+            UriBuilder.fromPath(DATASET_REFRESH_IN_GROUP_URI).build(groupId, datasetId, refreshId).toString();
         return get(uri, Refresh.class, auth, exec);
+    }
+
+    /**
+     * Calls "Datasets - Cancel Refresh" from the Power BI REST API. This cancels the request.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param datasetId the identifier of the dataset
+     * @param refreshId the identifier of the refresh
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
+     */
+    public static void cancelDatasetRefresh(final AuthTokenProvider auth, final String datasetId,
+        final String refreshId, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
+        final String uri = UriBuilder.fromPath(DATASET_REFRESH_URI).build(datasetId, refreshId).toString();
+        delete(uri, Void.class, auth, exec);
+    }
+
+    /**
+     * Calls "Datasets - Cancel Refresh" from the Power BI REST API. This cancels the request.
+     *
+     * @param auth the authentication to use (the access token is refreshed if necessary)
+     * @param groupId the workspace id (Can be <code>null</code> for "My Workspace")
+     * @param datasetId the identifier of the dataset
+     * @param refreshId the identifier of the refresh
+     * @param exec the execution context used to notify the user about the waiting period when waiting. The message will
+     *            be restored. Can be {@code null} in which case no message will be set.
+     * @throws PowerBIResponseException if an error was returned by the REST API
+     * @throws CanceledExecutionException if the request or any of its retries was canceled
+     */
+    public static void cancelDatasetRefresh(final AuthTokenProvider auth, final String groupId,
+        final String datasetId, final String refreshId, final ExecutionContext exec)
+        throws PowerBIResponseException, CanceledExecutionException {
+        if (groupId == null) {
+            cancelDatasetRefresh(auth, datasetId, refreshId, exec);
+        }
+        final String uri =
+            UriBuilder.fromPath(DATASET_REFRESH_IN_GROUP_URI).build(groupId, datasetId, refreshId).toString();
+        delete(uri, Void.class, auth, exec);
     }
 
     /** Make a GET request */

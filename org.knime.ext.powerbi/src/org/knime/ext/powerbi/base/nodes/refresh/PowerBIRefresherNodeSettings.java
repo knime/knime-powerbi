@@ -100,14 +100,15 @@ public final class PowerBIRefresherNodeSettings
     @Widget(title = "Workspace",
             description = """
                     The workspace which contains the Semantic Models.
-                    The first option, “My Workspace”, always refers to the private user workspace.""")
+                    The first option, “My Workspace”, always refers to the private user workspace.
+                    (The workspace is referenced by its ID.)""")
     @ChoicesProvider(WorkspaceChoicesProvider.class)
     @ValueReference(WorkspaceRef.class)
     @Layout(DatasetSection.class)
     String m_workspaceId;
 
     @Widget(title = "Semantic model",
-            description = "The Semantic model to read.")
+            description = "The Semantic model (also known as dataset) to read. (The model is referenced by its ID.)")
     @ChoicesProvider(DatasetChoicesProvider.class)
     @ValueReference(DatasetRef.class)
     @Layout(DatasetSection.class)

@@ -87,6 +87,9 @@ public final class PowerBIRefresherNodeFactory
                 href="https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset#limitations">limited
                 in some cases</a>.
             </p>
+            <p>
+                Canceling this node will also cancel the refresh.
+            </p>
             """;
 
     private static final String INPUT_PORT_GROUP = "Credential";

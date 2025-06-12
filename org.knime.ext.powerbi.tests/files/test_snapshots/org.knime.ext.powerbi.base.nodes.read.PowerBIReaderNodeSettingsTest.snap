@@ -34,7 +34,7 @@
               "title" : "Ignore"
             } ],
             "title" : "If returned data was limited because of result size",
-            "description" : "Power BI limits the result size of DAX queries (see\n<a href=\"learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#limitations\">here</a>).\nThis setting determines how to handle a truncated query result due these limits or other errors.\n\n<ul>\n<li><b>Fail</b>: Fail node execution</li>\n<li><b>Warn</b>: Set a node warning</li>\n<li><b>Ignore</b>: Do nothing</li>\n</ul>",
+            "description" : "Power BI limits the result size of DAX queries (see\n<a href=\"https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#limitations\">here</a>).\nThis setting determines how to handle a truncated query result due these limits or other errors.\n\n<ul>\n<li><b>Fail</b>: Fail node execution</li>\n<li><b>Warn</b>: Set a node warning</li>\n<li><b>Ignore</b>: Do nothing</li>\n</ul>",
             "default" : "FAIL"
           },
           "workspaceId" : {

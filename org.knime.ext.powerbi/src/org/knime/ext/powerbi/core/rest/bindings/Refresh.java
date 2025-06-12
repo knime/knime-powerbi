@@ -68,6 +68,8 @@ public final class Refresh {
 
     private final List<ObjectRefreshDefinition> objects;
 
+    private List<Message> messages; // set by GSON
+
     /**
      * Create a new refresh request object
      * @param type the type
@@ -95,6 +97,13 @@ public final class Refresh {
     }
 
     /**
+     * @return the messages by the engine
+     */
+    public List<Message> getMessages() {
+        return messages;
+    }
+
+    /**
      * Specifies objects to be reset
      *
      * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
@@ -111,9 +120,36 @@ public final class Refresh {
          * @param partition the name of the portion, may be null
          */
         public ObjectRefreshDefinition(final String table, final String partition) {
-            super();
             this.table = table;
             this.partition = partition;
+        }
+    }
+
+
+    /**
+     * Any included message.
+     *
+     * @author Jannik Löscher, KNIME GmbH, Konstanz, Germany
+     */
+    @SuppressWarnings({"java:S116", "java:S1700"}) // Names given by JSON Structure
+    public static class Message {
+
+        private String message;
+        private String type;
+
+        @Override
+        public String toString() {
+            var result = "";
+            if (type != null) {
+                result += type;
+            }
+            if (type != null && message != null) {
+                result += ": ";
+            }
+            if (message != null) {
+                result += message;
+            }
+            return result;
         }
     }
 

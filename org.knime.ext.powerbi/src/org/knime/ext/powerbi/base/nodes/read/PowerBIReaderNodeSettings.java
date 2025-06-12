@@ -123,7 +123,8 @@ public final class PowerBIReaderNodeSettings
     @Widget(title = "If returned data was limited because of result size",
             description = """
                 Power BI limits the result size of DAX queries (see
-                <a href="learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#limitations">here</a>).
+                <a href="https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#limitations">\
+                here</a>).
                 This setting determines how to handle a truncated query result due these limits or other errors.
                 """)
     @ValueSwitchWidget
