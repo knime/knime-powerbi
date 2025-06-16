@@ -58,6 +58,7 @@ import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.transport.http.HTTPConduit;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
+import org.knime.core.node.NodeLogger;
 import org.knime.core.util.ThreadLocalHTTPAuthenticator;
 import org.knime.core.util.ThreadLocalHTTPAuthenticator.AuthenticationCloseable;
 import org.knime.ext.powerbi.core.rest.bindings.Column;
@@ -153,6 +154,8 @@ public final class PowerBIRestAPIUtils {
         "https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/refreshes/{refreshId}";
 
     private static final Gson GSON = new Gson();
+
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(PowerBIRestAPIUtils.class);
 
     private PowerBIRestAPIUtils() {
         // Utility class
@@ -713,7 +716,8 @@ public final class PowerBIRestAPIUtils {
                 final var str = response.readEntity(String.class);
                 if (StringUtils.contains(str, "pbi.error")) {
                     final var queryError = GSON.fromJson(str, QueryErrorResponse.class);
-                    message = queryError.toString();
+                    message = queryError.toNodeMessage();
+                    LOGGER.error("Full PBI Request Error: " + queryError);
                 } else {
                     final var error = GSON.fromJson(str, ErrorResponse.class);
                     message = error == null ? "Unknown reason." : error.toString();

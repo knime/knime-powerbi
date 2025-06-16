@@ -88,14 +88,15 @@ public final class PowerBIReaderNodeSettings
     @Widget(title = "Workspace",
             description = """
                     The workspace which contains the Semantic Models.
-                    The first option, “My Workspace”, always refers to the private user workspace.""")
+                    The first option, “My Workspace”, always refers to the private user workspace.
+                    (The workspace is referenced by its ID.)""")
     @ChoicesProvider(WorkspaceChoicesProvider.class)
     @ValueReference(WorkspaceRef.class)
     @Layout(DatasetSection.class)
     String m_workspaceId;
 
     @Widget(title = "Semantic model",
-            description = "The Semantic model to read.")
+            description = "The Semantic model (also known as dataset) to read. (The model is referenced by its ID.)")
     @ChoicesProvider(DatasetChoicesProvider.class)
     @ValueReference(DatasetRef.class)
     @Layout(DatasetSection.class)
@@ -105,6 +106,13 @@ public final class PowerBIReaderNodeSettings
             description = """
                 The <a href="https://learn.microsoft.com/en-us/dax/dax-queries">DAX query</a> to evaluate.
                 See node description for limitations regarding output size.
+                The query
+                <pre>
+                EVALUATE
+                    'table_name';
+                </pre>
+                can be used to just read a table with a given name.
+                The table name can for example be found in the Power BI (Web) interface.
                 """)
     @TextAreaWidget
     @Layout(QuerySection.class)

@@ -51,6 +51,8 @@ package org.knime.ext.powerbi.core.rest.bindings;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.gson.annotations.SerializedName;
 
 /**
@@ -66,6 +68,13 @@ public final class QueryErrorResponse {
     @Override
     public String toString() {
         return getError().toString();
+    }
+
+    /**
+     * @return a string representation which is intended to be shown as node message
+     */
+    public String toNodeMessage() {
+        return getError().getNodeMessage();
     }
 
     /**
@@ -123,6 +132,19 @@ public final class QueryErrorResponse {
 
         private PBIError(final String c) {
             this.code = c;
+        }
+
+        /**
+         * @return a string representation which is intended to be shown as node message
+         */
+        public String getNodeMessage() {
+            for (var d : getDetails()) {
+                if (d.code.equals("DetailsMessage") && StringUtils.isNotBlank(d.getDetailData().getValue())) {
+                    return d.getDetailData().getValue();
+                }
+            }
+            // fall back
+            return toString();
         }
 
         @Override
