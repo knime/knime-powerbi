@@ -19,11 +19,20 @@ try {
     workflowTests.runTests(
         dependencies: [
             repositories:  [
-                'knime-gateway',
+                'knime-aws',
+                'knime-azure',
+                'knime-bigdata',
+                'knime-bigdata-externals',
+                'knime-cloud',
                 'knime-credentials-base',
+                'knime-database',
+                'knime-filehandling',
+                'knime-gateway',
                 'knime-js-base',
-                'knime-powerbi',
-                'knime-office365']
+                'knime-kerberos',
+                'knime-office365',
+                'knime-powerbi'
+                ]
         ]
     )
 
