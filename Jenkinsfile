@@ -26,13 +26,17 @@ try {
                 'knime-cloud',
                 'knime-credentials-base',
                 'knime-database',
+                'knime-database-proprietary',
                 'knime-filehandling',
                 'knime-gateway',
                 'knime-js-base',
                 'knime-kerberos',
                 'knime-office365',
                 'knime-powerbi'
-                ]
+                ],
+            ius: [
+                'org.knime.features.database.extensions.sqlserver.driver.feature.group'
+            ]
         ]
     )
 
