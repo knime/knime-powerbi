@@ -5,7 +5,7 @@ Bundle-SymbolicName: org.knime.ext.azuread;singleton:=true
 Bundle-Version: 5.6.0.qualifier
 Bundle-ClassPath: knime-azuread.jar
 Bundle-Vendor: KNIME AG, Zurich, Switzerland
-Require-Bundle: org.knime.base;bundle-version="[5.5.0,6.0.0)",
+Require-Bundle: org.knime.base;bundle-version="[5.6.0,6.0.0)",
  org.eclipse.jetty.servlet-api;bundle-version="[4.0.6,5.0.0)",
  org.eclipse.jetty.util;bundle-version="[12.0.6,13.0.0)",
  org.eclipse.jetty.http;bundle-version="[12.0.6,13.0.0)",
