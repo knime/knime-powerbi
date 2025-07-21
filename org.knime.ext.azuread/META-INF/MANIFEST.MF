@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: KNIME Azure Active Directory Integration
 Bundle-SymbolicName: org.knime.ext.azuread;singleton:=true
 Bundle-Version: 5.6.0.qualifier
-Bundle-ClassPath: knime-azuread.jar
+Bundle-ClassPath: .
 Bundle-Vendor: KNIME AG, Zurich, Switzerland
 Require-Bundle: org.knime.base;bundle-version="[5.6.0,6.0.0)",
  org.eclipse.jetty.servlet-api;bundle-version="[4.0.6,5.0.0)",
