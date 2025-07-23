@@ -54,28 +54,29 @@ import org.apache.commons.lang3.StringUtils;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.util.CheckUtils;
-import org.knime.core.webui.node.dialog.defaultdialog.DefaultNodeSettings;
-import org.knime.core.webui.node.dialog.defaultdialog.layout.Layout;
-import org.knime.core.webui.node.dialog.defaultdialog.layout.Section;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.Advanced;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.ArrayWidget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.Label;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.NumberInputWidget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.TextMessage;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.TextMessage.MessageType;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.TextMessage.SimpleTextMessageProvider;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.Widget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.choices.ChoicesProvider;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.updates.Reference;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.updates.ValueReference;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.validation.NumberInputWidgetValidation;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.validation.NumberInputWidgetValidation.MinValidation.IsNonNegativeValidation;
 import org.knime.credentials.base.CredentialPortObjectSpec;
 import org.knime.ext.powerbi.util.NodeDialogCommon.DatasetChoicesProvider;
 import org.knime.ext.powerbi.util.NodeDialogCommon.DatasetRef;
 import org.knime.ext.powerbi.util.NodeDialogCommon.WorkspaceChoicesProvider;
 import org.knime.ext.powerbi.util.NodeDialogCommon.WorkspaceRef;
 import org.knime.ext.powerbi.util.PowerBICredentialUtil;
+import org.knime.node.parameters.Advanced;
+import org.knime.node.parameters.NodeParameters;
+import org.knime.node.parameters.NodeParametersInput;
+import org.knime.node.parameters.Widget;
+import org.knime.node.parameters.array.ArrayWidget;
+import org.knime.node.parameters.layout.Layout;
+import org.knime.node.parameters.layout.Section;
+import org.knime.node.parameters.updates.ParameterReference;
+import org.knime.node.parameters.updates.ValueReference;
+import org.knime.node.parameters.widget.choices.ChoicesProvider;
+import org.knime.node.parameters.widget.choices.Label;
+import org.knime.node.parameters.widget.message.TextMessage;
+import org.knime.node.parameters.widget.message.TextMessage.MessageType;
+import org.knime.node.parameters.widget.message.TextMessage.SimpleTextMessageProvider;
+import org.knime.node.parameters.widget.number.NumberInputWidget;
+import org.knime.node.parameters.widget.number.NumberInputWidgetValidation;
+import org.knime.node.parameters.widget.number.NumberInputWidgetValidation.MinValidation.IsNonNegativeValidation;
 
 /**
  * Settings store managing all configurations required for the node.
@@ -84,7 +85,7 @@ import org.knime.ext.powerbi.util.PowerBICredentialUtil;
  */
 @SuppressWarnings("restriction") // New Node UI is not yet API
 public final class PowerBIRefresherNodeSettings
-    implements DefaultNodeSettings {
+    implements NodeParameters {
 
     @Section(title = "Semantic Model")
     interface DatasetSection {
@@ -162,7 +163,7 @@ public final class PowerBIRefresherNodeSettings
         CLEAR_VALUES;
     }
 
-    static class TableEntry implements DefaultNodeSettings {
+    static class TableEntry implements NodeParameters {
         @Widget(title = "Table",
                 description = "Name of the table to refresh.")
         String m_table = "";
@@ -183,7 +184,7 @@ public final class PowerBIRefresherNodeSettings
         }
 
         @Override
-        public boolean showMessage(final DefaultNodeSettingsContext context) {
+        public boolean showMessage(final NodeParametersInput context) {
             return m_tables.get().length == 0;
         }
 
@@ -213,7 +214,7 @@ public final class PowerBIRefresherNodeSettings
 
     }
 
-    static class TablesRef implements Reference<TableEntry[]> {
+    static class TablesRef implements ParameterReference<TableEntry[]> {
     }
 
 

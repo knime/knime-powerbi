@@ -59,14 +59,14 @@ import java.util.function.Supplier;
 import org.knime.base.node.io.filehandling.webui.ReferenceStateProvider;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.NodeLogger;
-import org.knime.core.webui.node.dialog.defaultdialog.DefaultNodeSettings.DefaultNodeSettingsContext;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.choices.StringChoice;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.choices.StringChoicesProvider;
+import org.knime.node.parameters.NodeParametersInput;
 import org.knime.credentials.base.CredentialPortObjectSpec;
 import org.knime.credentials.base.NoSuchCredentialException;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.AuthTokenProvider;
 import org.knime.ext.powerbi.core.rest.PowerBIRestAPIUtils.PowerBIResponseException;
+import org.knime.node.parameters.widget.choices.StringChoice;
+import org.knime.node.parameters.widget.choices.StringChoicesProvider;
 
 /**
  * Common modern UI dialog components for Power BI nodes
@@ -94,12 +94,12 @@ public final class NodeDialogCommon {
         }
 
         @Override
-        public List<StringChoice> computeState(final DefaultNodeSettingsContext context) {
+        public List<StringChoice> computeState(final NodeParametersInput context) {
             final var result = new LinkedList<StringChoice>();
             result.add(new StringChoice("\t", "My Workspace"));
 
             try {
-                final var cred = (CredentialPortObjectSpec)context.getPortObjectSpec(0)
+                final var cred = (CredentialPortObjectSpec)context.getInPortSpec(0)
                         .orElseThrow(NoSuchCredentialException::new);
                 final AuthTokenProvider auth = PowerBICredentialUtil.toAccessTokenAccessor(cred)::getAccessToken;
                 Arrays.stream(PowerBIRestAPIUtils.getGroups(auth, null).getValue())
@@ -132,7 +132,7 @@ public final class NodeDialogCommon {
         }
 
         @Override
-        public List<StringChoice> computeState(final DefaultNodeSettingsContext context) {
+        public List<StringChoice> computeState(final NodeParametersInput context) {
             try {
                 final var raw = m_workspace.get();
                 if (raw == null)  {
@@ -140,7 +140,7 @@ public final class NodeDialogCommon {
                 }
                 // API wants null for My Workspace but UI maps that to unselected
                 final var workspace = Optional.of(raw).filter(Predicate.not(String::isBlank)).orElse(null);
-                final var cred = (CredentialPortObjectSpec)context.getPortObjectSpec(0)
+                final var cred = (CredentialPortObjectSpec)context.getInPortSpec(0)
                         .orElseThrow(NoSuchCredentialException::new);
                 final AuthTokenProvider auth = PowerBICredentialUtil.toAccessTokenAccessor(cred)::getAccessToken;
                 return Arrays.stream(PowerBIRestAPIUtils.getDatasets(auth, workspace, null).getValue())

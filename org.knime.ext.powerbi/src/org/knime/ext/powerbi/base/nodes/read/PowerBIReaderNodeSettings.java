@@ -52,20 +52,20 @@ import org.apache.commons.lang3.StringUtils;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.util.CheckUtils;
-import org.knime.core.webui.node.dialog.defaultdialog.DefaultNodeSettings;
-import org.knime.core.webui.node.dialog.defaultdialog.layout.Layout;
-import org.knime.core.webui.node.dialog.defaultdialog.layout.Section;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.Label;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.TextAreaWidget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.ValueSwitchWidget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.Widget;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.choices.ChoicesProvider;
-import org.knime.core.webui.node.dialog.defaultdialog.widget.updates.ValueReference;
+import org.knime.node.parameters.NodeParameters;
 import org.knime.credentials.base.CredentialPortObjectSpec;
 import org.knime.ext.powerbi.util.NodeDialogCommon.DatasetChoicesProvider;
 import org.knime.ext.powerbi.util.NodeDialogCommon.DatasetRef;
 import org.knime.ext.powerbi.util.NodeDialogCommon.WorkspaceChoicesProvider;
 import org.knime.ext.powerbi.util.NodeDialogCommon.WorkspaceRef;
+import org.knime.node.parameters.Widget;
+import org.knime.node.parameters.layout.Layout;
+import org.knime.node.parameters.layout.Section;
+import org.knime.node.parameters.updates.ValueReference;
+import org.knime.node.parameters.widget.choices.ChoicesProvider;
+import org.knime.node.parameters.widget.choices.Label;
+import org.knime.node.parameters.widget.choices.ValueSwitchWidget;
+import org.knime.node.parameters.widget.text.TextAreaWidget;
 import org.knime.ext.powerbi.util.PowerBICredentialUtil;
 
 /**
@@ -75,7 +75,7 @@ import org.knime.ext.powerbi.util.PowerBICredentialUtil;
  */
 @SuppressWarnings("restriction") // New Node UI is not yet API
 public final class PowerBIReaderNodeSettings
-    implements DefaultNodeSettings {
+    implements NodeParameters {
 
     @Section(title = "Semantic Model")
     interface DatasetSection {
