@@ -32,7 +32,8 @@ try {
                 'knime-js-base',
                 'knime-kerberos',
                 'knime-office365',
-                'knime-powerbi'
+                'knime-powerbi',
+                'knime-scripting-editor'
                 ],
             ius: [
                 'org.knime.features.database.extensions.sqlserver.driver.feature.group'
