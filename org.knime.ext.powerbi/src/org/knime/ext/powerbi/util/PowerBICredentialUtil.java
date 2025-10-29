@@ -50,6 +50,7 @@ package org.knime.ext.powerbi.util;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.credentials.base.Credential;
@@ -58,6 +59,7 @@ import org.knime.credentials.base.CredentialRef;
 import org.knime.credentials.base.NoSuchCredentialException;
 import org.knime.credentials.base.oauth.api.AccessTokenAccessor;
 import org.knime.credentials.base.oauth.api.AccessTokenWithScopesAccessor;
+import org.knime.credentials.base.oauth.api.IdentityProviderException;
 
 /**
  * Utility class for handling {@link Credential}s related to Power BI API access.
@@ -67,6 +69,8 @@ import org.knime.credentials.base.oauth.api.AccessTokenWithScopesAccessor;
 public final class PowerBICredentialUtil {
 
     private static final String POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/.default";
+
+    private static final Pattern ERROR_PREFIX = Pattern.compile("^\\s*AADSTS(\\d+)", Pattern.CASE_INSENSITIVE); // NOSONAR
 
     private PowerBICredentialUtil() {
         // Utility class, no instantiation
@@ -112,11 +116,29 @@ public final class PowerBICredentialUtil {
         if (credSpec.hasAccessor(AccessTokenAccessor.class)) {
             return credSpec.toAccessor(AccessTokenAccessor.class);
         } else if (credSpec.hasAccessor(AccessTokenWithScopesAccessor.class)) {
-            return credSpec.toAccessor(AccessTokenWithScopesAccessor.class)
-                .getAccessTokenWithScopes(Set.of(POWERBI_SCOPE));
+            try {
+                return credSpec.toAccessor(AccessTokenWithScopesAccessor.class)
+                        .getAccessTokenWithScopes(Set.of(POWERBI_SCOPE));
+            } catch (IdentityProviderException e) {
+                throw handleIdentityProviderException(e);
+            }
         } else {
             throw new IllegalStateException("The provided credential is incompatible with Power BI");
         }
+    }
+
+    private static IOException handleIdentityProviderException(final IdentityProviderException e) {
+        final var matcher = ERROR_PREFIX.matcher(e.getErrorSummary());
+        if (matcher.find()) {
+            final var errorCode = Integer.parseInt(matcher.group(1));
+            // See
+            // https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes#aadsts-error-codes
+            if (errorCode == 65001 || errorCode == 65004) {
+                return new IOException("Consent mssing. Please refer to the node description to find "
+                        + "scopes your or your admin need to consent to.", e);
+            }
+        }
+        return e;
     }
 
 }

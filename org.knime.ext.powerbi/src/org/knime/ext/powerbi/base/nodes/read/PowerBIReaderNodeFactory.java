@@ -94,8 +94,15 @@ public final class PowerBIReaderNodeFactory extends ConfigurableNodeFactory<Powe
                 <a href="https://learn.microsoft.com/en-us/dax/window-function-dax">WINDOW</a>.
             </p>
             <p>
-                To ensure that the data is up to date before executing this node the
-                Refresh Power BI Semantic Model node.
+                To ensure that the data is up to date before executing this node, the
+                Refresh Power BI Semantic Model node can be used.
+            </p>
+            <p>
+            <b>Note:</b> The scopes required by this node have to be consented
+            to at least once interactively by the user or workspace admin, especially for scopeless
+            secrets. Please refer to the <a \
+            href="https://docs.knime.com/latest/community_hub_secrets_guide/index.html\
+            #secret_type_azure_scopes">documentation</a> to find out which scopes are required.
             </p>
             """;
 

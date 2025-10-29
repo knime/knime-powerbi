@@ -90,6 +90,13 @@ public final class PowerBIRefresherNodeFactory
             <p>
                 Canceling this node will also cancel the refresh.
             </p>
+            <p>
+            <b>Note:</b> The scopes required by this node have to be consented
+            to at least once interactively by the user or workspace admin, especially for scopeless
+            secrets. Please refer to the <a \
+            href="https://docs.knime.com/latest/community_hub_secrets_guide/index.html\
+            #secret_type_azure_scopes">documentation</a> to find out which scopes are required.
+            </p>
             """;
 
     private static final String INPUT_PORT_GROUP = "Credential";
