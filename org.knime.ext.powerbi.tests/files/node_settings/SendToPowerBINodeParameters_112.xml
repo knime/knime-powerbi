@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <config key="model">
+        <entry key="workspace" type="xstring" value=""/>
+        <entry key="dataset_name" type="xstring" value="Dataset3 - Bernd - Test - 2025-12"/>
+        <config key="table_name">
+            <entry key="array-size" type="xint" value="3"/>
+            <entry key="0" type="xstring" value="Table3.1 - Bernd - Test - 2025-12"/>
+            <entry key="1" type="xstring" value="Table3.2 - Bernd - Test - 2025-12"/>
+            <entry key="2" type="xstring" value="Table3.3 - Bernd - Test - 2025-12"/>
+        </config>
+        <entry key="dataset_name_dialog" type="xstring" value="secret_store_test_data_DONT_DELETE"/>
+        <config key="table_name_dialog">
+            <entry key="array-size" type="xint" value="3"/>
+            <entry key="0" type="xstring" value="secrets_over_secrets"/>
+            <entry key="1" type="xstring" value="secrets_over_secrets"/>
+            <entry key="2" type="xstring" value="secrets_over_secrets"/>
+        </config>
+        <config key="relationship_fromtables">
+            <entry key="array-size" type="xint" value="2"/>
+            <entry key="0" type="xstring" value="Table3.1 - Bernd - Test - 2025-12"/>
+            <entry key="1" type="xstring" value="Table3.1 - Bernd - Test - 2025-12"/>
+        </config>
+        <config key="relationship_fromcolumns">
+            <entry key="array-size" type="xint" value="2"/>
+            <entry key="0" type="xstring" value="T1 - C1"/>
+            <entry key="1" type="xstring" value="T1 - C2"/>
+        </config>
+        <config key="relationship_totables">
+            <entry key="array-size" type="xint" value="2"/>
+            <entry key="0" type="xstring" value="Table3.2 - Bernd - Test - 2025-12"/>
+            <entry key="1" type="xstring" value="Table3.3 - Bernd - Test - 2025-12"/>
+        </config>
+        <config key="relationship_tocolumns">
+            <entry key="array-size" type="xint" value="2"/>
+            <entry key="0" type="xstring" value="T2 - C1"/>
+            <entry key="1" type="xstring" value="T3 - C2"/>
+        </config>
+        <config key="relationship_crossfilterbehaviors">
+            <entry key="array-size" type="xint" value="2"/>
+            <entry key="0" type="xstring" value="BothDirections"/>
+            <entry key="1" type="xstring" value="OneDirection"/>
+        </config>
+        <entry key="create_new_dataset" type="xboolean" value="true"/>
+        <entry key="allow_overwrite" type="xboolean" value="true"/>
+        <entry key="append_rows" type="xboolean" value="true"/>
+    </config>
+</config>

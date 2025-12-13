@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
@@ -74,31 +75,31 @@ import com.google.common.base.Objects;
  */
 final class SendToPowerBINodeSettings2 {
 
-    private static final String CFG_KEY_WORKSPACE = "workspace";
+    static final String CFG_KEY_WORKSPACE = "workspace";
 
-    private static final String CFG_KEY_DATASET_NAME = "dataset_name";
+    static final String CFG_KEY_DATASET_NAME = "dataset_name";
 
-    private static final String CFG_KEY_TABLE_NAMES = "table_name";
+    static final String CFG_KEY_TABLE_NAMES = "table_name";
 
-    private static final String CFG_KEY_DATASET_NAME_DIALOG = "dataset_name_dialog";
+    static final String CFG_KEY_DATASET_NAME_DIALOG = "dataset_name_dialog";
 
-    private static final String CFG_KEY_TABLE_NAMES_DIALOG = "table_name_dialog";
+    static final String CFG_KEY_TABLE_NAMES_DIALOG = "table_name_dialog";
 
-    private static final String CFG_KEY_RELATIONSHIP_FROMTABLES = "relationship_fromtables";
+    static final String CFG_KEY_RELATIONSHIP_FROMTABLES = "relationship_fromtables";
 
-    private static final String CFG_KEY_RELATIONSHIP_FROMCOLUMNS = "relationship_fromcolumns";
+    static final String CFG_KEY_RELATIONSHIP_FROMCOLUMNS = "relationship_fromcolumns";
 
-    private static final String CFG_KEY_RELATIONSHIP_TOTABLES = "relationship_totables";
+    static final String CFG_KEY_RELATIONSHIP_TOTABLES = "relationship_totables";
 
-    private static final String CFG_KEY_RELATIONSHIP_TOCOLUMNS = "relationship_tocolumns";
+    static final String CFG_KEY_RELATIONSHIP_TOCOLUMNS = "relationship_tocolumns";
 
-    private static final String CFG_KEY_RELATIONSHIP_CROSSFILTERBEHAVIORS = "relationship_crossfilterbehaviors";
+    static final String CFG_KEY_RELATIONSHIP_CROSSFILTERBEHAVIORS = "relationship_crossfilterbehaviors";
 
-    private static final String CFG_KEY_CREATE_NEW_DATASET = "create_new_dataset";
+    static final String CFG_KEY_CREATE_NEW_DATASET = "create_new_dataset";
 
-    private static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
+    static final String CFG_KEY_ALLOW_OVERWRITE = "allow_overwrite";
 
-    private static final String CFG_KEY_APPEND_ROWS = "append_rows";
+    static final String CFG_KEY_APPEND_ROWS = "append_rows";
 
     private String m_workspace = "";
 
@@ -309,8 +310,7 @@ final class SendToPowerBINodeSettings2 {
 
         // Check the dataset name
         final String datasetName = settings.getString(CFG_KEY_DATASET_NAME);
-        if (datasetName == null || datasetName.trim().isEmpty()
-            || datasetName.equals(SendToPowerBINodeDialog2.DATASET_PLACEHOLDER)) {
+        if (StringUtils.isBlank(datasetName)) {
             throw new InvalidSettingsException("The dataset name must be set.");
         }
 
@@ -348,8 +348,7 @@ final class SendToPowerBINodeSettings2 {
         // Loop over names and check
         final Set<String> allNames = new HashSet<>();
         for (int i = 0; i < tableNames.length; i++) {
-            if (tableNames[i] == null || tableNames[i].trim().isEmpty()
-                || tableNames[i].equals(SendToPowerBINodeDialog2.TABLE_PLACEHOLDER)) {
+            if (StringUtils.isBlank(tableNames[i])) {
                 if (i == 0 && tableNames.length == 1) {
                     throw new InvalidSettingsException("Table name must not be empty.");
                 } else {

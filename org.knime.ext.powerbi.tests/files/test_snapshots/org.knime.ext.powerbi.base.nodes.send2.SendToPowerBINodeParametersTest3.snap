@@ -1,0 +1,601 @@
+{
+  "data" : {
+    "model" : {
+      "workspace" : "06d79edc-d868-4557-9a7d-a64f08a448fb",
+      "datasetMode" : "CREATE_NEW",
+      "datasetName" : {
+        "datasetMode" : "CREATE_NEW",
+        "datasetNameCreate" : "dataset-new-2",
+        "datasetNameSelect" : ""
+      },
+      "tableNames" : [ {
+        "tableNameCreate" : "table-new-1",
+        "tableNameSelect" : ""
+      }, {
+        "tableNameCreate" : "table-new-2",
+        "tableNameSelect" : ""
+      } ],
+      "allowOverwrite" : true,
+      "tableOperation" : "OVERWRITE",
+      "relationships" : [ {
+        "fromTable" : "table-new-1",
+        "fromColumn" : "T1 - C1",
+        "toTable" : "table-new-2",
+        "toColumn" : "T2 - C2",
+        "crossFilterBehavior" : "BOTH_DIRECTIONS"
+      } ]
+    }
+  },
+  "schema" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "allowOverwrite" : {
+            "type" : "boolean",
+            "title" : "Delete and create new if dataset exists",
+            "description" : "Select this option to delete a dataset with the same name if one exists before creating the new dataset.\nIf a dataset with the configured name exists but this option is not selected, the node will fail.\n<br/>\n<b>WARNING:</b> This will permanently delete the existing dataset and ALL associated reports and dashboard\ntiles. This action cannot be undone.\n",
+            "default" : false
+          },
+          "datasetMode" : {
+            "oneOf" : [ {
+              "const" : "CREATE_NEW",
+              "title" : "Create new dataset"
+            }, {
+              "const" : "SELECT_EXISTING",
+              "title" : "Select existing dataset"
+            } ],
+            "title" : "Dataset mode",
+            "description" : "Select whether to create a new dataset or select an existing dataset. When selecting an existing\ndataset, you can append rows to existing tables or overwrite all rows.\nNote, only \"Push datasets\" (datasets that support streaming or programmatic data upload) can be\nselected. Regular Power BI datasets are not supported.\n",
+            "default" : "CREATE_NEW"
+          },
+          "datasetName" : {
+            "type" : "object",
+            "properties" : {
+              "datasetMode" : {
+                "oneOf" : [ {
+                  "const" : "CREATE_NEW",
+                  "title" : "Create new dataset"
+                }, {
+                  "const" : "SELECT_EXISTING",
+                  "title" : "Select existing dataset"
+                } ]
+              },
+              "datasetNameCreate" : {
+                "type" : "string",
+                "title" : "Dataset name",
+                "description" : "The name of the dataset to create in the workspace.",
+                "default" : ""
+              },
+              "datasetNameSelect" : {
+                "type" : "string",
+                "title" : "Dataset name",
+                "description" : "Select the name of an existing dataset.",
+                "default" : ""
+              }
+            },
+            "default" : {
+              "datasetNameCreate" : "",
+              "datasetNameSelect" : ""
+            }
+          },
+          "relationships" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "crossFilterBehavior" : {
+                  "oneOf" : [ {
+                    "const" : "AUTOMATIC",
+                    "title" : "Automatic"
+                  }, {
+                    "const" : "ONE_DIRECTION",
+                    "title" : "One direction"
+                  }, {
+                    "const" : "BOTH_DIRECTIONS",
+                    "title" : "Both directions"
+                  } ],
+                  "title" : "Cross filtering",
+                  "description" : "Control how filters propagate across related tables.\n<ul>\n<li><b>Automatic</b>: Let Power BI determine the best filtering behavior</li>\n<li><b>One direction</b>: Filters will be applied to the table where values are aggregated</li>\n<li><b>Both directions</b>: Filtering is applied as if both tables were joined into a single table</li>\n</ul>",
+                  "default" : "AUTOMATIC"
+                },
+                "fromColumn" : {
+                  "type" : "string",
+                  "title" : "From column",
+                  "description" : "Select the column that serves as the source column.",
+                  "default" : ""
+                },
+                "fromTable" : {
+                  "type" : "string",
+                  "title" : "From table",
+                  "description" : "Select the table that contains the source column.",
+                  "default" : ""
+                },
+                "toColumn" : {
+                  "type" : "string",
+                  "title" : "To column",
+                  "description" : "Select the column that serves as the target column.",
+                  "default" : ""
+                },
+                "toTable" : {
+                  "type" : "string",
+                  "title" : "To table",
+                  "description" : "Select the table that contains the target column.",
+                  "default" : ""
+                }
+              }
+            },
+            "title" : "Relationships",
+            "description" : "Define relationships between tables to enable cross-table filtering in Power BI. Each relationship\nconnects a column from one table (source) to a column in another table (target). Columns must be in\ndifferent input tables and typically share common values (e.g., foreign keys).\n",
+            "default" : [ ]
+          },
+          "relationshipsWarning" : {
+            "type" : "object"
+          },
+          "tableNames" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "datasetMode" : {
+                  "oneOf" : [ {
+                    "const" : "CREATE_NEW",
+                    "title" : "Create new dataset"
+                  }, {
+                    "const" : "SELECT_EXISTING",
+                    "title" : "Select existing dataset"
+                  } ]
+                },
+                "tableNameCreate" : {
+                  "type" : "string",
+                  "title" : "Table name",
+                  "description" : "The name of the table to create in the new dataset.",
+                  "default" : ""
+                },
+                "tableNameSelect" : {
+                  "type" : "string",
+                  "title" : "Table name",
+                  "description" : "Select an existing table from the dataset to append to or overwrite.",
+                  "default" : ""
+                }
+              }
+            },
+            "title" : "Table names",
+            "description" : "The name of the table(s) in the dataset to upload. When uploading multiple tables, each table must have\na unique name.\n",
+            "default" : [ ]
+          },
+          "tableOperation" : {
+            "oneOf" : [ {
+              "const" : "APPEND",
+              "title" : "Append rows"
+            }, {
+              "const" : "OVERWRITE",
+              "title" : "Overwrite rows"
+            } ],
+            "title" : "Table operation",
+            "description" : "Select whether to append new rows to existing tables or replace all existing rows with the input data.\nOverwrite will delete all current data in the selected tables.\n",
+            "default" : "APPEND"
+          },
+          "workspace" : {
+            "type" : "string",
+            "title" : "Workspace",
+            "description" : "Select the workspace to use. Select \"default\" to use the default workspace which is called\n\"My workspace\" in the Power BI user interface.\n<br/>\n<b>NOTE:</b> Authenticate using the <tt>Microsoft Authenticator</tt> node to see available workspaces.\n",
+            "default" : "default"
+          },
+          "workspaceInfo" : {
+            "type" : "object"
+          }
+        }
+      }
+    }
+  },
+  "ui_schema" : {
+    "elements" : [ {
+      "type" : "Control",
+      "id" : "#/properties/model/properties/workspaceInfo",
+      "options" : {
+        "format" : "textMessage"
+      },
+      "providedOptions" : [ "message" ]
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/workspace",
+      "options" : {
+        "format" : "dropDown"
+      },
+      "providedOptions" : [ "possibleValues" ]
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/datasetMode",
+      "options" : {
+        "format" : "valueSwitch"
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/datasetName/properties/datasetNameCreate",
+      "options" : {
+        "validation" : {
+          "pattern" : {
+            "errorMessage" : "The field cannot be blank (it must contain at least one non-whitespace character).",
+            "parameters" : {
+              "pattern" : ".*\\S.*"
+            }
+          }
+        }
+      },
+      "rule" : {
+        "effect" : "SHOW",
+        "condition" : {
+          "scope" : "#/properties/model/properties/datasetName/properties/datasetMode",
+          "schema" : {
+            "oneOf" : [ {
+              "const" : "CREATE_NEW"
+            } ]
+          }
+        }
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/datasetName/properties/datasetNameSelect",
+      "options" : {
+        "format" : "dropDown"
+      },
+      "providedOptions" : [ "possibleValues" ],
+      "rule" : {
+        "effect" : "HIDE",
+        "condition" : {
+          "scope" : "#/properties/model/properties/datasetName/properties/datasetMode",
+          "schema" : {
+            "oneOf" : [ {
+              "const" : "CREATE_NEW"
+            } ]
+          }
+        }
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/tableNames",
+      "options" : {
+        "detail" : [ {
+          "type" : "Control",
+          "scope" : "#/properties/tableNameCreate",
+          "options" : {
+            "validation" : {
+              "pattern" : {
+                "errorMessage" : "The field cannot be blank (it must contain at least one non-whitespace character).",
+                "parameters" : {
+                  "pattern" : ".*\\S.*"
+                }
+              }
+            }
+          },
+          "label" : "",
+          "rule" : {
+            "effect" : "SHOW",
+            "condition" : {
+              "scope" : "#/properties/datasetMode",
+              "schema" : {
+                "oneOf" : [ {
+                  "const" : "CREATE_NEW"
+                } ]
+              }
+            }
+          }
+        }, {
+          "type" : "Control",
+          "scope" : "#/properties/tableNameSelect",
+          "options" : {
+            "format" : "dropDown"
+          },
+          "label" : "",
+          "providedOptions" : [ "possibleValues" ],
+          "rule" : {
+            "effect" : "HIDE",
+            "condition" : {
+              "scope" : "#/properties/datasetMode",
+              "schema" : {
+                "oneOf" : [ {
+                  "const" : "CREATE_NEW"
+                } ]
+              }
+            }
+          }
+        } ],
+        "addButtonText" : "Add table",
+        "arrayElementTitle" : "Table Name",
+        "hasFixedSize" : true
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/allowOverwrite",
+      "options" : {
+        "format" : "checkbox"
+      },
+      "rule" : {
+        "effect" : "SHOW",
+        "condition" : {
+          "scope" : "#/properties/model/properties/datasetMode",
+          "schema" : {
+            "oneOf" : [ {
+              "const" : "CREATE_NEW"
+            } ]
+          }
+        }
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/tableOperation",
+      "options" : {
+        "format" : "radio",
+        "radioLayout" : "vertical"
+      },
+      "rule" : {
+        "effect" : "HIDE",
+        "condition" : {
+          "scope" : "#/properties/model/properties/datasetMode",
+          "schema" : {
+            "oneOf" : [ {
+              "const" : "CREATE_NEW"
+            } ]
+          }
+        }
+      }
+    }, {
+      "type" : "Control",
+      "id" : "#/properties/model/properties/relationshipsWarning",
+      "options" : {
+        "format" : "textMessage",
+        "isAdvanced" : true
+      },
+      "providedOptions" : [ "message" ],
+      "rule" : {
+        "effect" : "SHOW",
+        "condition" : {
+          "type" : "OR",
+          "conditions" : [ {
+            "scope" : "#/properties/model/properties/datasetMode",
+            "schema" : {
+              "oneOf" : [ {
+                "const" : "SELECT_EXISTING"
+              } ]
+            }
+          }, {
+            "schema" : { }
+          } ]
+        }
+      }
+    }, {
+      "type" : "Control",
+      "scope" : "#/properties/model/properties/relationships",
+      "options" : {
+        "isAdvanced" : true,
+        "detail" : [ {
+          "type" : "Control",
+          "scope" : "#/properties/fromTable",
+          "options" : {
+            "format" : "dropDown"
+          },
+          "providedOptions" : [ "possibleValues" ]
+        }, {
+          "type" : "Control",
+          "scope" : "#/properties/fromColumn",
+          "options" : {
+            "format" : "dropDown"
+          },
+          "providedOptions" : [ "possibleValues" ]
+        }, {
+          "type" : "Control",
+          "scope" : "#/properties/toTable",
+          "options" : {
+            "format" : "dropDown"
+          },
+          "providedOptions" : [ "possibleValues" ]
+        }, {
+          "type" : "Control",
+          "scope" : "#/properties/toColumn",
+          "options" : {
+            "format" : "dropDown"
+          },
+          "providedOptions" : [ "possibleValues" ]
+        }, {
+          "type" : "Control",
+          "scope" : "#/properties/crossFilterBehavior",
+          "options" : {
+            "format" : "radio",
+            "radioLayout" : "vertical"
+          }
+        } ],
+        "addButtonText" : "Add relationship",
+        "arrayElementTitle" : "Relationship"
+      },
+      "providedOptions" : [ "elementDefaultValue" ],
+      "rule" : {
+        "effect" : "HIDE",
+        "condition" : {
+          "type" : "OR",
+          "conditions" : [ {
+            "scope" : "#/properties/model/properties/datasetMode",
+            "schema" : {
+              "oneOf" : [ {
+                "const" : "SELECT_EXISTING"
+              } ]
+            }
+          }, {
+            "schema" : { }
+          } ]
+        }
+      }
+    } ]
+  },
+  "persist" : {
+    "type" : "object",
+    "properties" : {
+      "model" : {
+        "type" : "object",
+        "properties" : {
+          "workspaceInfo" : { },
+          "workspace" : {
+            "configPaths" : [ [ "workspace" ] ]
+          },
+          "datasetMode" : {
+            "configPaths" : [ [ "create_new_dataset" ] ]
+          },
+          "datasetName" : {
+            "configPaths" : [ [ "dataset_name" ] ]
+          },
+          "tableNames" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "datasetMode" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ ]
+                },
+                "tableNameCreate" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "table_name" ] ]
+                },
+                "tableNameSelect" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "table_name" ] ]
+                }
+              }
+            }
+          },
+          "allowOverwrite" : {
+            "configKey" : "allow_overwrite"
+          },
+          "tableOperation" : {
+            "configPaths" : [ [ "append_rows" ] ]
+          },
+          "relationshipsWarning" : { },
+          "relationships" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "fromTable" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "relationship_fromtables" ] ]
+                },
+                "fromColumn" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "relationship_fromcolumns" ] ]
+                },
+                "toTable" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "relationship_totables" ] ]
+                },
+                "toColumn" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "relationship_tocolumns" ] ]
+                },
+                "crossFilterBehavior" : {
+                  "route" : [ "..", ".." ],
+                  "configPaths" : [ [ "relationship_crossfilterbehaviors" ] ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "initialUpdates" : [ {
+    "scope" : "#/properties/model/properties/datasetName/properties/datasetMode",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : "CREATE_NEW"
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/relationships/items/properties/fromColumn",
+    "providedOptionName" : "possibleValues",
+    "values" : [ {
+      "indices" : [ 0 ],
+      "value" : [ ]
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/relationships/items/properties/fromTable",
+    "providedOptionName" : "possibleValues",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : [ ]
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/relationships/items/properties/toColumn",
+    "providedOptionName" : "possibleValues",
+    "values" : [ {
+      "indices" : [ 0 ],
+      "value" : [ ]
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/relationships/items/properties/toTable",
+    "providedOptionName" : "possibleValues",
+    "values" : [ {
+      "indices" : [ 0 ],
+      "value" : [ ]
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/tableNames",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : [ ]
+    } ]
+  }, {
+    "scope" : "#/properties/model/properties/tableNames/items/properties/datasetMode",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : "CREATE_NEW"
+    } ]
+  }, {
+    "id" : "#/properties/model/properties/relationshipsWarning",
+    "providedOptionName" : "message",
+    "values" : [ {
+      "indices" : [ ],
+      "value" : {
+        "title" : "Relationships",
+        "description" : "To define relationships, connect at least two input tables to this node. Each table must contain at least one column with a data type supported by Power BI.",
+        "type" : "INFO"
+      }
+    } ]
+  } ],
+  "globalUpdates" : [ {
+    "trigger" : {
+      "id" : "after-open-dialog"
+    },
+    "triggerInitially" : true,
+    "dependencies" : [ "#/properties/model/properties/datasetMode", "#/properties/model/properties/datasetName", "#/properties/model/properties/workspace" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/datasetMode"
+    },
+    "dependencies" : [ "#/properties/model/properties/datasetMode", "#/properties/model/properties/datasetName", "#/properties/model/properties/workspace" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/datasetName"
+    },
+    "dependencies" : [ "#/properties/model/properties/datasetMode", "#/properties/model/properties/datasetName", "#/properties/model/properties/workspace" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/relationships/items/properties/fromTable"
+    },
+    "dependencies" : [ "#/properties/model/properties/relationships/items/properties/fromTable", "#/properties/model/properties/tableNames" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/relationships/items/properties/toTable"
+    },
+    "dependencies" : [ "#/properties/model/properties/relationships/items/properties/toTable", "#/properties/model/properties/tableNames" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/tableNames"
+    },
+    "dependencies" : [ "#/properties/model/properties/relationships/items/properties/fromTable", "#/properties/model/properties/relationships/items/properties/toTable", "#/properties/model/properties/tableNames" ]
+  }, {
+    "trigger" : {
+      "scope" : "#/properties/model/properties/workspace"
+    },
+    "dependencies" : [ "#/properties/model/properties/datasetMode", "#/properties/model/properties/datasetName", "#/properties/model/properties/workspace" ]
+  } ]
+}
