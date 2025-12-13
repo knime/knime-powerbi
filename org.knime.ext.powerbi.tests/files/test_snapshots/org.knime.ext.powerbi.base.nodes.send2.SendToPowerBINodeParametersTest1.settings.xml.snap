@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="test">
+    <entry key="workspace" type="xstring" value="a697ef89-02d4-4001-b259-5bfc2f61b0fb"/>
+    <entry key="create_new_dataset" type="xboolean" value="false"/>
+    <entry key="dataset_name" type="xstring" value="testing_cur"/>
+    <entry key="dataset_name_dialog" type="xstring" value="dataset-new-1"/>
+    <config key="table_name">
+        <entry key="array-size" type="xint" value="1"/>
+        <entry key="0" type="xstring" value="test"/>
+    </config>
+    <config key="table_name_dialog">
+        <entry key="array-size" type="xint" value="1"/>
+        <entry key="0" type="xstring" value="table-new-1-1"/>
+    </config>
+    <entry key="allow_overwrite" type="xboolean" value="true"/>
+    <entry key="append_rows" type="xboolean" value="false"/>
+    <config key="relationship_fromtables">
+        <entry key="array-size" type="xint" value="0"/>
+    </config>
+    <config key="relationship_fromcolumns">
+        <entry key="array-size" type="xint" value="0"/>
+    </config>
+    <config key="relationship_totables">
+        <entry key="array-size" type="xint" value="0"/>
+    </config>
+    <config key="relationship_tocolumns">
+        <entry key="array-size" type="xint" value="0"/>
+    </config>
+    <config key="relationship_crossfilterbehaviors">
+        <entry key="array-size" type="xint" value="0"/>
+    </config>
+</config>
