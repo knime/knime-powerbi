@@ -21,8 +21,8 @@
         "properties" : {
           "allowOverwrite" : {
             "type" : "boolean",
-            "title" : "Delete and create new if dataset exists",
-            "description" : "Select this option to delete a dataset with the same name if one exists before creating the new dataset.\nIf a dataset with the configured name exists but this option is not selected, the node will fail.\n<br/>\n<b>WARNING:</b> This will permanently delete the existing dataset and ALL associated reports and dashboard\ntiles. This action cannot be undone.\n",
+            "title" : "Delete and recreate if exists",
+            "description" : "If enabled, deletes a dataset with the same name before creating a new one.\nIf disabled and a dataset with the configured name already exists, the node will fail.\n<br/>\n<b>WARNING:</b> Deleting a dataset will permanently remove it along with ALL associated reports and\ndashboard tiles. This action cannot be undone.\n",
             "default" : false
           },
           "datasetMode" : {
@@ -34,7 +34,7 @@
               "title" : "Select existing dataset"
             } ],
             "title" : "Dataset mode",
-            "description" : "Select whether to create a new dataset or select an existing dataset. When selecting an existing\ndataset, you can append rows to existing tables or overwrite all rows.\nNote, only \"Push datasets\" (datasets that support streaming or programmatic data upload) can be\nselected. Regular Power BI datasets are not supported.\n",
+            "description" : "Choose whether to create a new dataset or select an existing one. When selecting an existing\ndataset, you can append rows to existing tables or overwrite all rows.\n<br/>\n<b>Note:</b> Only \"Push datasets\" (datasets that support streaming or programmatic data upload) can be\nselected. Regular Power BI datasets are not supported.\n",
             "default" : "CREATE_NEW"
           },
           "datasetName" : {
@@ -148,8 +148,8 @@
                 }
               }
             },
-            "title" : "Table names",
-            "description" : "The name of the table(s) in the dataset to upload. When uploading multiple tables, each table must have\na unique name.\n",
+            "title" : "Table name",
+            "description" : "The name of the table(s) in the dataset to upload. Each table must have a unique name.\n",
             "default" : [ ]
           },
           "tableOperation" : {
@@ -161,7 +161,7 @@
               "title" : "Overwrite rows"
             } ],
             "title" : "Table operation",
-            "description" : "Select whether to append new rows to existing tables or replace all existing rows with the input data.\nOverwrite will delete all current data in the selected tables.\n",
+            "description" : "Select whether to append new rows to existing tables or replace all rows with the input data.\nOverwriting will delete all current data in the selected tables.\n",
             "default" : "APPEND"
           },
           "workspace" : {
@@ -290,7 +290,7 @@
           }
         } ],
         "addButtonText" : "Add table",
-        "arrayElementTitle" : "Table Name",
+        "arrayElementTitle" : "Table name",
         "hasFixedSize" : true
       }
     }, {
@@ -557,7 +557,7 @@
     "trigger" : {
       "scope" : "#/properties/model/properties/tableNames"
     },
-    "dependencies" : [ "#/properties/model/properties/relationships/items/properties/fromTable", "#/properties/model/properties/relationships/items/properties/toTable", "#/properties/model/properties/tableNames" ]
+    "dependencies" : [ "#/properties/model/properties/relationships/items/properties/fromColumn", "#/properties/model/properties/relationships/items/properties/fromTable", "#/properties/model/properties/relationships/items/properties/toColumn", "#/properties/model/properties/relationships/items/properties/toTable", "#/properties/model/properties/tableNames" ]
   }, {
     "trigger" : {
       "scope" : "#/properties/model/properties/workspace"

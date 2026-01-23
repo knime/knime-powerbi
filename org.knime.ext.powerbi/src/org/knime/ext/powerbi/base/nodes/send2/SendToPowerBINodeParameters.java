@@ -69,6 +69,7 @@ import org.knime.core.webui.node.dialog.defaultdialog.internal.persistence.Eleme
 import org.knime.core.webui.node.dialog.defaultdialog.internal.persistence.PersistArray;
 import org.knime.core.webui.node.dialog.defaultdialog.internal.persistence.PersistArrayElement;
 import org.knime.core.webui.node.dialog.defaultdialog.internal.widget.OverwriteDialogTitleInternal;
+import org.knime.core.webui.node.dialog.defaultdialog.internal.widget.WidgetInternal;
 import org.knime.core.webui.node.dialog.defaultdialog.util.updates.StateComputationFailureException;
 import org.knime.credentials.base.CredentialPortObjectSpec;
 import org.knime.credentials.base.NoSuchCredentialException;
@@ -134,9 +135,10 @@ final class SendToPowerBINodeParameters implements NodeParameters {
     String m_workspace = DEFAULT_WORKSPACE; // UI value for default workspace (but persisted as empty string)
 
     @Widget(title = "Dataset mode", description = """
-            Select whether to create a new dataset or select an existing dataset. When selecting an existing
+            Choose whether to create a new dataset or select an existing one. When selecting an existing
             dataset, you can append rows to existing tables or overwrite all rows.
-            Note, only "Push datasets" (datasets that support streaming or programmatic data upload) can be
+            <br/>
+            <b>Note:</b> Only "Push datasets" (datasets that support streaming or programmatic data upload) can be
             selected. Regular Power BI datasets are not supported.
             """)
     @ValueSwitchWidget
@@ -148,30 +150,29 @@ final class SendToPowerBINodeParameters implements NodeParameters {
     @Persistor(DatasetNamePersistor.class)
     DatasetName m_datasetName = new DatasetName();
 
-    @Widget(title = "Table names", description = """
-            The name of the table(s) in the dataset to upload. When uploading multiple tables, each table must have
-            a unique name.
+    @Widget(title = "Table name", description = """
+            The name of the table(s) in the dataset to upload. Each table must have a unique name.
             """)
-    @ArrayWidget(addButtonText = "Add table", hasFixedSize = true)
+    @ArrayWidget(addButtonText = "Add table", hasFixedSize = true, elementTitle = "Table name")
     @ValueReference(TableNamesRef.class)
     @ValueProvider(TableNamesProvider.class)
     @PersistArray(TableNamesArrayPersistor.class)
     TableName[] m_tableNames = {};
 
-    @Widget(title = "Delete and create new if dataset exists", description = """
-            Select this option to delete a dataset with the same name if one exists before creating the new dataset.
-            If a dataset with the configured name exists but this option is not selected, the node will fail.
+    @Widget(title = "Delete and recreate if exists", description = """
+            If enabled, deletes a dataset with the same name before creating a new one.
+            If disabled and a dataset with the configured name already exists, the node will fail.
             <br/>
-            <b>WARNING:</b> This will permanently delete the existing dataset and ALL associated reports and dashboard
-            tiles. This action cannot be undone.
+            <b>WARNING:</b> Deleting a dataset will permanently remove it along with ALL associated reports and
+            dashboard tiles. This action cannot be undone.
             """)
     @Effect(predicate = IsCreateNewDataset.class, type = EffectType.SHOW)
     @Persist(configKey = SendToPowerBINodeSettings2.CFG_KEY_ALLOW_OVERWRITE)
     boolean m_allowOverwrite;
 
     @Widget(title = "Table operation", description = """
-            Select whether to append new rows to existing tables or replace all existing rows with the input data.
-            Overwrite will delete all current data in the selected tables.
+            Select whether to append new rows to existing tables or replace all rows with the input data.
+            Overwriting will delete all current data in the selected tables.
             """)
     @RadioButtonsWidget
     @Effect(predicate = IsCreateNewDataset.class, type = EffectType.HIDE)
@@ -253,6 +254,7 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         @Widget(title = "Dataset name", description = "Select the name of an existing dataset.")
         @ChoicesProvider(DatasetNameChoicesProvider.class)
+        @WidgetInternal(hideControlInNodeDescription = "duplicated information from above")
         @Effect(predicate = IsCreateNewDatasetInDatasetName.class, type = EffectType.HIDE)
         String m_datasetNameSelect = "";
 
@@ -330,6 +332,7 @@ final class SendToPowerBINodeParameters implements NodeParameters {
         DatasetMode m_datasetMode; // For use in modifications
 
         @Widget(title = "Table name", description = "The name of the table to create in the new dataset.")
+        @WidgetInternal(hideControlInNodeDescription = "individual fields don't need to be documented")
         @TextInputWidget(patternValidation = PatternValidation.IsNotBlankValidation.class)
         @OverwriteDialogTitleInternal("")
         @Effect(predicate = IsCreateNewDatasetInTableName.class, type = EffectType.SHOW)
@@ -338,6 +341,7 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         @Widget(title = "Table name",
             description = "Select an existing table from the dataset to append to or overwrite.")
+        @WidgetInternal(hideControlInNodeDescription = "individual fields don't need to be documented")
         @OverwriteDialogTitleInternal("")
         @ChoicesProvider(TableNameChoicesProvider.class)
         @Effect(predicate = IsCreateNewDatasetInTableName.class, type = EffectType.HIDE)
@@ -370,6 +374,7 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         @Widget(title = "From column", description = "Select the column that serves as the source column.")
         @ChoicesProvider(FromColumnChoicesProvider.class)
+        @ValueReference(FromColumnRef.class)
         @ValueProvider(FromColumnValueProvider.class)
         @PersistArrayElement(RelationshipFieldPersistors.FromColumnPersistor.class)
         String m_fromColumn = "";
@@ -383,6 +388,7 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         @Widget(title = "To column", description = "Select the column that serves as the target column.")
         @ChoicesProvider(ToColumnChoicesProvider.class)
+        @ValueReference(ToColumnRef.class)
         @ValueProvider(ToColumnValueProvider.class)
         @PersistArrayElement(RelationshipFieldPersistors.ToColumnPersistor.class)
         String m_toColumn = "";
@@ -397,6 +403,12 @@ final class SendToPowerBINodeParameters implements NodeParameters {
         }
 
         static final class ToTableRef implements ParameterReference<String> {
+        }
+
+        static final class FromColumnRef implements ParameterReference<String> {
+        }
+
+        static final class ToColumnRef implements ParameterReference<String> {
         }
 
     }
@@ -531,18 +543,33 @@ final class SendToPowerBINodeParameters implements NodeParameters {
             .orElse(List.of());
     }
 
+    /**
+     * Helper method to fail the default value computation in a state provider if the current value is already present.
+     */
+    private static void failComputationIfPresent(final Supplier<String> currentValueSupplier)
+        throws StateComputationFailureException {
+        if (StringUtils.isNotEmpty(currentValueSupplier.get())) {
+            throw new StateComputationFailureException();
+        }
+    }
+
     // Value providers for relationship defaults
     static final class FromTableValueProvider implements StateProvider<String> {
 
         private Supplier<TableName[]> m_tableNamesSupplier;
 
+        private Supplier<String> m_currentFromTableSupplier;
+
         @Override
         public void init(final StateProviderInitializer initializer) {
             m_tableNamesSupplier = initializer.computeFromValueSupplier(TableNamesRef.class);
+            // Get the current (persisted) m_fromTable value to check if it's already set
+            m_currentFromTableSupplier = initializer.getValueSupplier(Relationship.FromTableRef.class);
         }
 
         @Override
-        public String computeState(final NodeParametersInput input) {
+        public String computeState(final NodeParametersInput input) throws StateComputationFailureException {
+            failComputationIfPresent(m_currentFromTableSupplier);
             return getDefaultRelationship(input, m_tableNamesSupplier.get()).fromTable();
         }
     }
@@ -551,13 +578,17 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         private Supplier<TableName[]> m_tableNamesSupplier;
 
+        private Supplier<String> m_currentFromColumnSupplier;
+
         @Override
         public void init(final StateProviderInitializer initializer) {
             m_tableNamesSupplier = initializer.computeFromValueSupplier(TableNamesRef.class);
+            m_currentFromColumnSupplier = initializer.getValueSupplier(Relationship.FromColumnRef.class);
         }
 
         @Override
-        public String computeState(final NodeParametersInput input) {
+        public String computeState(final NodeParametersInput input) throws StateComputationFailureException {
+            failComputationIfPresent(m_currentFromColumnSupplier);
             return getDefaultRelationship(input, m_tableNamesSupplier.get()).fromColumn();
         }
     }
@@ -566,13 +597,17 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         private Supplier<TableName[]> m_tableNamesSupplier;
 
+        private Supplier<String> m_currentToTableSupplier;
+
         @Override
         public void init(final StateProviderInitializer initializer) {
             m_tableNamesSupplier = initializer.computeFromValueSupplier(TableNamesRef.class);
+            m_currentToTableSupplier = initializer.getValueSupplier(Relationship.ToTableRef.class);
         }
 
         @Override
-        public String computeState(final NodeParametersInput input) {
+        public String computeState(final NodeParametersInput input) throws StateComputationFailureException {
+            failComputationIfPresent(m_currentToTableSupplier);
             return getDefaultRelationship(input, m_tableNamesSupplier.get()).toTable();
         }
     }
@@ -581,13 +616,17 @@ final class SendToPowerBINodeParameters implements NodeParameters {
 
         private Supplier<TableName[]> m_tableNamesSupplier;
 
+        private Supplier<String> m_currentToColumnSupplier;
+
         @Override
         public void init(final StateProviderInitializer initializer) {
             m_tableNamesSupplier = initializer.computeFromValueSupplier(TableNamesRef.class);
+            m_currentToColumnSupplier = initializer.getValueSupplier(Relationship.ToColumnRef.class);
         }
 
         @Override
-        public String computeState(final NodeParametersInput input) {
+        public String computeState(final NodeParametersInput input) throws StateComputationFailureException {
+            failComputationIfPresent(m_currentToColumnSupplier);
             return getDefaultRelationship(input, m_tableNamesSupplier.get()).toColumn();
         }
     }
